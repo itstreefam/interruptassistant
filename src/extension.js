@@ -9,8 +9,12 @@ function activate(context) {
 
 	const interruptionManager = new InterruptionManager(context);
 
-	context.subscriptions.push(vscode.commands.registerCommand('interruptassistant.start', () => {
+	context.subscriptions.push(vscode.commands.registerCommand('interruptassistant.initialize', () => {
 		interruptionManager.initialize();
+	}));
+
+	context.subscriptions.push(vscode.commands.registerCommand('interruptassistant.trigger', () => {
+		interruptionManager.triggerInterruption();
 	}));
 }
 

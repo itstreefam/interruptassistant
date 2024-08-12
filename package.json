@@ -13,8 +13,12 @@
   "main": "./src/extension.js",
   "contributes": {
     "commands": [{
-      "command": "interruptassistant.start",
-      "title": "Interruption Assistant: Start"
+      "command": "interruptassistant.initialize",
+      "title": "Interruption Assistant: Initialize"
+    },
+    {
+      "command": "interruptassistant.trigger",
+      "title": "Interruption Assistant: Trigger Interruption"
     }]
   },
   "scripts": {
