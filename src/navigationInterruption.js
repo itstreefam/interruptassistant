@@ -1,11 +1,12 @@
 const vscode = require('vscode');
 
-class NavigationInterrupt {
+class NavigationInterruption {
     constructor(context, interruptionManager) {
         this.context = context;
         this.interruptionManager = interruptionManager;
         this.navigationCount = 0;
         this.randomThreshold = this.getRandomNavigationThreshold();
+        this.previousFileName = vscode.window.activeTextEditor ? vscode.window.activeTextEditor.document.fileName : null; // Store the initial file name
         console.log("Random Threshold: " + this.randomThreshold);
     }
 
@@ -19,32 +20,44 @@ class NavigationInterrupt {
     }
 
     onBetweenFilesNav(event) {
-        // Check if the user navigated between different files
-        if(typeof event === 'undefined') {
-            return;
-        }
+        if (event && event.document) {
+            const currentFileName = event.document.fileName;
 
-        this.navigationCount += 1;
-        console.log("Navigation Count: " + this.navigationCount);
-        console.log("onBetweenFilesNav: " + JSON.stringify(event));
+            // Only count as a navigation if it's a different file
+            if (this.previousFileName !== currentFileName) {
+                this.navigationCount += 1;
+                console.log("Navigation Count: " + this.navigationCount);
+                console.log("Switched to a new file: " + currentFileName);
 
-        if (this.navigationCount >= this.randomThreshold) {
-            this.trigger();
+                this.previousFileName = currentFileName;
+
+                if (this.navigationCount >= this.randomThreshold) {
+                    this.trigger();
+                }
+            }
         }
     }
 
     onWithinFileNav(event) {
-        // Check if the user navigated within the same file
-        if(typeof event === 'undefined') {
-            return;
-        }
+        if (event && event.textEditor && event.textEditor.document) {
+            const currentFileName = event.textEditor.document.fileName;
 
-        this.navigationCount += 1;
-        console.log("Navigation Count: " + this.navigationCount);
-        console.log("onWithinFileNav: " + JSON.stringify(event));
+            // Ignore within-file navigation that coincides with a file switch
+            if (this.previousFileName === currentFileName) {
+                const selections = event.selections;
 
-        if (this.navigationCount >= this.randomThreshold) {
-            this.trigger();
+                // Check if the selection is more than just a cursor movement
+                if (selections.some(selection => !selection.isEmpty)) {
+                    console.log("Word/Block selection within the same file: " + currentFileName);
+
+                    this.navigationCount += 1;
+                    console.log("Navigation Count: " + this.navigationCount);
+
+                    if (this.navigationCount >= this.randomThreshold) {
+                        this.trigger();
+                    }
+                }
+            }
         }
     }
 
@@ -61,4 +74,4 @@ class NavigationInterrupt {
     }
 }
 
-module.exports = NavigationInterrupt;
+module.exports = NavigationInterruption;

@@ -1,8 +1,9 @@
 const vscode = require('vscode');
 
 class InterruptionTask {
-    constructor(context) {
+    constructor(context, interruptionManager) {
         this.context = context;
+        this.interruptionManager = interruptionManager;
     }
 
     startInterruption() {
@@ -29,6 +30,8 @@ class InterruptionTask {
         // when the web panel is disposed, log a message to the console
         panel.onDidDispose(() => {
             console.log('Webview was disposed');
+
+            console.log('Resuming monitoring...' + this.interruptionManager.navigationInterruption.randomThreshold);
         });
     }
 

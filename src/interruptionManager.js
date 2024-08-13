@@ -1,13 +1,13 @@
 const InterruptionTask = require("./interruptionTask");
 const CodeChangeInterruption = require('./codeChangeInterruption');
-const NavigationInterrupt = require('./navigationInterruption');
+const NavigationInterruption = require('./navigationInterruption');
 
 class InterruptionManager {
     constructor(context) {
         this.context = context;
-        this.interruptionTask = new InterruptionTask(context);
+        this.interruptionTask = new InterruptionTask(context, this);
         // this.codeChangeInterruption = new CodeChangeInterruption(context, this);
-        this.navigationInterruption = new NavigationInterrupt(context, this);
+        this.navigationInterruption = new NavigationInterruption(context, this);
     }
 
     initialize() {
