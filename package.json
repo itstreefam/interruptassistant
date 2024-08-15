@@ -3,13 +3,22 @@
   "displayName": "interruptAssistant",
   "description": "(Semi)auto interrupting users for lab studies involving emulation of interruptions",
   "version": "0.0.1",
+  "publisher": "trip",
+  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/itstreefam/interruptassistant.git"
+  },
   "engines": {
     "vscode": "^1.92.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./src/extension.js",
   "contributes": {
     "commands": [{
