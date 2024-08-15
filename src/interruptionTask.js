@@ -4,10 +4,14 @@ class InterruptionTask {
     constructor(context, interruptionManager) {
         this.context = context;
         this.interruptionManager = interruptionManager;
+        this.currentProblemIndex = 0;
+        this.totalProblems = 10;
+        this.correctAnswers = 0;
+        this.timer = null;
     }
 
     startInterruption() {
-        // make a web panel that spans the entire screen
+        // Create a web panel that spans the entire screen
         const panel = vscode.window.createWebviewPanel(
             'interruptassistant',
             'Interrupting Task',
@@ -17,26 +21,50 @@ class InterruptionTask {
             }
         );
 
-        // set the web panel's html content to be a math equation 56 x 23
-        panel.webview.html = this.getWebviewContent();
+        this.startTimer(panel); // Start the 2-minute timer
 
-        // when the user submits their answer, check if it is correct and show a message box
+        // Set the web panel's html content to the first math equation
+        this.showNextProblem(panel);
+
+        // Handle the user's submitted answer
         panel.webview.onDidReceiveMessage(message => {
             console.log(message);
             const isCorrect = this.checkAnswer(message.answer);
-            this.showResultMessage(isCorrect);
+            this.correctAnswers += isCorrect ? 1 : 0;
+
+            if (this.currentProblemIndex < this.totalProblems - 1) {
+                this.currentProblemIndex++;
+                this.showNextProblem(panel); // Show the next problem
+            } else {
+                this.finishInterruption(panel); // Finish when all problems are done
+            }
         });
 
-        // when the web panel is disposed, log a message to the console
+        // Log when the web panel is disposed (closed)
         panel.onDidDispose(() => {
             console.log('Webview was disposed');
-
-            console.log('Resuming monitoring...' + this.interruptionManager.navigationInterruption.randomThreshold);
+            clearTimeout(this.timer); // Clear the timer if the panel is manually closed
+            console.log('Resuming monitoring...');
         });
     }
 
-    // make the equation as large as possible in the middle of the screen followed by "=" and an input field
-    getWebviewContent() {
+    startTimer(panel) {
+        this.timer = setTimeout(() => {
+            console.log('Time is up!');
+            this.finishInterruption(panel);
+        }, 2 * 60 * 1000); // 2-minute timer
+    }
+
+    showNextProblem(panel) {
+        const multiplicand1 = this.generateRandomDoubleDigit();
+        const multiplicand2 = this.generateRandomDoubleDigit();
+        const equation = `${multiplicand1} x ${multiplicand2}`;
+        
+        panel.webview.html = this.getWebviewContent(equation);
+        this.currentAnswer = multiplicand1 * multiplicand2; // Store the correct answer
+    }
+
+    getWebviewContent(equation) {
         return `
             <html>
                 <head>
@@ -96,7 +124,7 @@ class InterruptionTask {
                 </head>
                 <body>
                     <div id="container">
-                        <span>56 x 23 =</span>
+                        <span>${equation} =</span>
                         <input type="number" id="answer" />
                         <br>
                         <button onclick="submitAnswer()">Submit</button>
@@ -119,25 +147,22 @@ class InterruptionTask {
             </html>
         `;
     }
-      
 
-    // get the correct answer to the math equation
-    getCorrectAnswer() {
-        return 56 * 23;
+    generateRandomDoubleDigit() {
+        let num;
+        do {
+            num = Math.floor(Math.random() * 90) + 10; // Generates a number between 10 and 99
+        } while (num.toString().includes('0') || num.toString().includes('1')); // Exclude 0 and 1
+        return num;
     }
 
-    // check if the user's input is correct
     checkAnswer(userAnswer) {
-        return userAnswer === this.getCorrectAnswer();
+        return userAnswer === this.currentAnswer;
     }
 
-    // show a message box with the result of the user's input
-    showResultMessage(isCorrect) {
-        if (isCorrect) {
-            vscode.window.showInformationMessage('Correct!');
-        } else {
-            vscode.window.showInformationMessage('Incorrect. Please try again.');
-        }
+    finishInterruption(panel) {
+        panel.dispose(); // Close the panel
+        vscode.window.showInformationMessage(`Interruption complete. You answered ${this.correctAnswers} out of ${this.totalProblems} correctly.`);
     }
 }
 
