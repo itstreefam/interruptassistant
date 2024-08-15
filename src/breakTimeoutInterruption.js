@@ -33,7 +33,9 @@ class BreakTimeoutInterruption {
         clearInterval(this.breakTimer);
         vscode.window.showInputBox({ prompt: "Time for a break?" }).then((input) => {
             if (input === "break") {
-                this.trigger();
+                if(this.interruptionManager.interruptionQueue[2].isTriggered === false) {
+                    this.trigger();
+                }
             } else {
                 this.startInactivityTimer();
             }

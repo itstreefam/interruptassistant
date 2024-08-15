@@ -32,7 +32,9 @@ class NavigationInterruption {
                 this.previousFileName = currentFileName;
 
                 if (this.navigationCount >= this.randomThreshold) {
-                    this.trigger();
+                    if (this.interruptionManager.interruptionQueue[0].isTriggered === false) {
+                        this.trigger();
+                    }
                 }
             }
         }
@@ -54,7 +56,9 @@ class NavigationInterruption {
                     console.log("Navigation Count: " + this.navigationCount);
 
                     if (this.navigationCount >= this.randomThreshold) {
-                        this.trigger();
+                        if (this.interruptionManager.interruptionQueue[0].isTriggered === false) {
+                            this.trigger();
+                        }
                     }
                 }
             }

@@ -32,7 +32,10 @@ class CodeChangeInterruption {
             if (this.accumulatedChanges > 5) {  // Only trigger if enough changes were made
                 console.log(this.accumulatedChanges);
 
-                this.trigger();
+                // Trigger the interruption
+                if (this.interruptionManager.interruptionQueue[1].isTriggered === false) {
+                    this.trigger();
+                }
             } else {
                 // Reset the threshold if criteria not met
                 this.randomThreshold = this.getRandomExecutionThreshold();
