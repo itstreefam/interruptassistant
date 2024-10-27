@@ -7,7 +7,7 @@ class NavigationInterruption {
         this.navigationCount = 0;
         this.randomThreshold = this.getRandomNavigationThreshold();
         this.previousFileName = vscode.window.activeTextEditor ? vscode.window.activeTextEditor.document.fileName : null; // Store the initial file name
-        console.log("Random Threshold: " + this.randomThreshold);
+        console.log("Random Threshold for navigation interruption: " + this.randomThreshold);
     }
 
     startMonitoring() {

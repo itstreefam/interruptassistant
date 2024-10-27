@@ -5,14 +5,13 @@ class BreakTimeoutInterruption {
         this.context = context;
         this.interruptionManager = interruptionManager;
         this.inactivityTime = 0;
-        this.breakTriggerCount = 0;
         this.breakTimer = null;
     }
 
     startMonitoring() {
         this.startInactivityTimer();
         this.context.subscriptions.push(
-            vscode.workspace.onDidChangeTextDocument((document) => this.resetInactivity())
+            vscode.workspace.onDidChangeTextDocument(() => this.resetInactivity())
         );
     }
 
@@ -44,10 +43,6 @@ class BreakTimeoutInterruption {
 
     trigger() {
         vscode.window.showInformationMessage("Break Timeout Interruption Triggered");
-        this.breakTriggerCount += 1;
-        if (this.breakTriggerCount < 2) {
-            this.startInactivityTimer();
-        }
         this.interruptionManager.triggerInterruption();
     }
 }

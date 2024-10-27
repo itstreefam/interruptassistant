@@ -7,6 +7,7 @@ class CodeChangeInterruption {
         this.executionCount = 0;
         this.accumulatedChanges = 0;
         this.randomThreshold = this.getRandomExecutionThreshold();
+        console.log("Random Threshold for code change interruption: " + this.randomThreshold);
     }
 
     startMonitoring() {
