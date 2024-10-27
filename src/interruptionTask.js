@@ -11,6 +11,9 @@ class InterruptionTask {
     }
 
     startInterruption() {
+        // Remove all currently open editor tabs
+        vscode.commands.executeCommand('workbench.action.closeAllEditors');
+
         // Create a web panel that spans the entire screen
         const panel = vscode.window.createWebviewPanel(
             'interruptassistant',
