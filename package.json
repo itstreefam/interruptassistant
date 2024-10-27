@@ -2,7 +2,7 @@
   "name": "interruptassistant",
   "displayName": "interruptAssistant",
   "description": "(Semi)auto interrupting users for lab studies involving emulation of interruptions",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "trip",
   "private": true,
   "license": "MIT",
