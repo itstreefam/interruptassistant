@@ -5,33 +5,27 @@ class InterruptionTask {
         this.context = context;
         this.interruptionManager = interruptionManager;
         this.currentProblemIndex = 0;
-        this.totalProblems = 10;
+        this.totalProblems = 10; // Number of questions in each interruption
         this.correctAnswers = 0;
         this.timer = null;
     }
 
-    startInterruption() {
-        // Remove all currently open editor tabs
+    startInterruption(onComplete) {
         vscode.commands.executeCommand('workbench.action.closeAllEditors');
 
-        // Create a web panel that spans the entire screen
+        // Create a new webview panel for the interruption task
         const panel = vscode.window.createWebviewPanel(
             'interruptassistant',
             'Interrupting Task',
             vscode.ViewColumn.One,
-            {
-                enableScripts: true
-            }
+            { enableScripts: true }
         );
 
-        this.startTimer(panel); // Start the 2-minute timer
+        this.startTimer(panel, onComplete);
+        this.showNextProblem(panel); // Display the first math problem
 
-        // Set the web panel's html content to the first math equation
-        this.showNextProblem(panel);
-
-        // Handle the user's submitted answer
+        // Listen for messages from the webview
         panel.webview.onDidReceiveMessage(message => {
-            console.log(message);
             const isCorrect = this.checkAnswer(message.answer);
             this.correctAnswers += isCorrect ? 1 : 0;
 
@@ -39,23 +33,24 @@ class InterruptionTask {
                 this.currentProblemIndex++;
                 this.showNextProblem(panel); // Show the next problem
             } else {
-                this.finishInterruption(panel); // Finish when all problems are done
+                this.finishInterruption(panel, onComplete); // Finish when all problems are answered
             }
         });
 
-        // Log when the web panel is disposed (closed)
         panel.onDidDispose(() => {
-            console.log('Webview was disposed');
-            clearTimeout(this.timer); // Clear the timer if the panel is manually closed
-            console.log('Resuming monitoring...');
+            console.log("Webview was disposed before completion.");
+            clearTimeout(this.timer); // Clear the timer if the panel is closed early
+
+            // Reschedule the next interruption immediately since this one was not completed
+            this.interruptionManager.scheduleNextInterruption();
         });
     }
 
-    startTimer(panel) {
+    startTimer(panel, onComplete) {
         this.timer = setTimeout(() => {
-            console.log('Time is up!');
-            this.finishInterruption(panel);
-        }, 2 * 60 * 1000); // 2-minute timer
+            console.log("Interruption time limit reached.");
+            this.finishInterruption(panel, onComplete); // Automatically finish after 3 minutes
+        }, 3 * 60 * 1000);
     }
 
     showNextProblem(panel) {
@@ -163,9 +158,21 @@ class InterruptionTask {
         return userAnswer === this.currentAnswer;
     }
 
-    finishInterruption(panel) {
-        panel.dispose(); // Close the panel
+    finishInterruption(panel, onComplete) {
+        panel.dispose();
         vscode.window.showInformationMessage(`Interruption complete. You answered ${this.correctAnswers} out of ${this.totalProblems} correctly.`);
+
+        this.resetState();
+
+        // Notify InterruptionManager of valid interruption completion
+        if (onComplete) onComplete();
+    }
+
+    resetState() {
+        this.currentProblemIndex = 0;
+        this.correctAnswers = 0;
+        clearTimeout(this.timer);
+        this.timer = null;
     }
 }
 
