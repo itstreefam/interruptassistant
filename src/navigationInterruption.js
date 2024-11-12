@@ -6,11 +6,22 @@ class NavigationInterruption {
         this.interruptionManager = interruptionManager;
         this.navigationCount = 0;
         this.randomThreshold = this.getRandomNavigationThreshold();
-        this.previousFileName = vscode.window.activeTextEditor ? vscode.window.activeTextEditor.document.fileName : null; // Store the initial file name
+        this.autoTriggerTimeout = null; // Timer for auto-triggering
+        this.isTriggered = false;
+        this.previousFileName = vscode.window.activeTextEditor ? vscode.window.activeTextEditor.document.fileName : null;
         console.log("Random Threshold for navigation interruption: " + this.randomThreshold);
     }
 
     startMonitoring() {
+        // Set a 12-minute auto-trigger timer
+        this.autoTriggerTimeout = setTimeout(() => {
+            if (!this.isTriggered) {
+                console.log("Auto-triggering navigation interruption due to time threshold.");
+                this.trigger();
+            }
+        }, 12 * 60 * 1000); // 12 minutes in milliseconds
+
+        // Monitor between and within file navigation
         this.context.subscriptions.push(
             vscode.window.onDidChangeActiveTextEditor((event) => this.onBetweenFilesNav(event))
         );
@@ -23,18 +34,13 @@ class NavigationInterruption {
         if (event && event.document) {
             const currentFileName = event.document.fileName;
 
-            // Only count as a navigation if it's a different file
             if (this.previousFileName !== currentFileName) {
                 this.navigationCount += 1;
                 console.log("Navigation Count: " + this.navigationCount);
-                console.log("Switched to a new file: " + currentFileName);
-
                 this.previousFileName = currentFileName;
 
-                if (this.navigationCount >= this.randomThreshold) {
-                    if (this.interruptionManager.interruptionQueue[0].isTriggered === false) {
-                        this.trigger();
-                    }
+                if (this.navigationCount >= this.randomThreshold && !this.isTriggered) {
+                    this.trigger();
                 }
             }
         }
@@ -43,38 +49,67 @@ class NavigationInterruption {
     onWithinFileNav(event) {
         if (event && event.textEditor && event.textEditor.document) {
             const currentFileName = event.textEditor.document.fileName;
-
-            // Ignore within-file navigation that coincides with a file switch
+    
             if (this.previousFileName === currentFileName) {
                 const selections = event.selections;
-
-                // Check if the selection is more than just a cursor movement
-                if (selections.some(selection => !selection.isEmpty)) {
-                    console.log("Word/Block selection within the same file: " + currentFileName);
-
-                    this.navigationCount += 1;
-                    console.log("Navigation Count: " + this.navigationCount);
-
-                    if (this.navigationCount >= this.randomThreshold) {
-                        if (this.interruptionManager.interruptionQueue[0].isTriggered === false) {
+    
+                selections.forEach(selection => {
+                    const selectedText = event.textEditor.document.getText(selection).trim();
+    
+                    // Set thresholds for a selection to be counted as "significant"
+                    const minSelectionLength = 5; // Minimum selection length
+                    const significantPositionChange = 15; // Minimum position change for new selection
+    
+                    const currentSelectionLength = selectedText.length;
+                    const isSignificantLength = currentSelectionLength >= minSelectionLength;
+    
+                    // Calculate start and end positions of the current selection
+                    const { start, end } = selection;
+                    const hasMovedSignificantly = !this.lastSelection || 
+                        Math.abs(start.line - this.lastSelection.start.line) > 1 || 
+                        Math.abs(end.character - this.lastSelection.end.character) >= significantPositionChange;
+    
+                    // Only count if the selection length is significant and position has moved significantly
+                    if (isSignificantLength && hasMovedSignificantly && !/^\s*$/.test(selectedText)) {
+                        console.log(`Significant selection: "${selectedText}"`);
+    
+                        this.navigationCount += 1;
+                        console.log("Navigation Count: " + this.navigationCount);
+    
+                        // Update the last recorded significant selection
+                        this.lastSelection = { start, end };
+                        this.lastSelectedText = selectedText;
+    
+                        if (this.navigationCount >= this.randomThreshold && !this.isTriggered) {
                             this.trigger();
                         }
                     }
-                }
+                });
             }
         }
-    }
+    }    
 
     trigger() {
-        vscode.window.showInformationMessage("Navigation Interruption Triggered");
+        this.isTriggered = true;
+
+        // Clear the auto-trigger timer to prevent duplicate triggers
+        if (this.autoTriggerTimeout) {
+            clearTimeout(this.autoTriggerTimeout);
+            this.autoTriggerTimeout = null;
+        }
+
         this.interruptionManager.triggerInterruption();
+        this.resetNavigation();
+    }
+
+    resetNavigation() {
         this.navigationCount = 0;
         this.randomThreshold = this.getRandomNavigationThreshold();
+        this.isTriggered = false;
     }
 
     getRandomNavigationThreshold() {
-        // Return a random number between 15 and 20
-        return Math.floor(Math.random() * (20 - 15 + 1)) + 15;
+        return Math.floor(Math.random() * (40 - 25 + 1)) + 25; // Random threshold between 25 and 40
     }
 }
 

@@ -12,83 +12,90 @@ class InterruptionManager {
     constructor(context) {
         this.context = context;
         this.interruptionTask = new InterruptionTask(context, this);
-
-        // Initialize the interruption classes
         this.codeChangeInterruption = new CodeChangeInterruption(context, this);
         this.navigationInterruption = new NavigationInterruption(context, this);
 
-        // Maintain an ordered list of interruption objects
         this.interruptionQueue = [
             { type: this.navigationInterruption, isTriggered: false },
             { type: this.codeChangeInterruption, isTriggered: false }
         ];
 
-        this.currentInterruptionIndex = 0; // Start with the first interruption type
-        this.interruptionCount = 0; // Limit to 3 interruptions, first interruption after 11-13 minutes, then 1 depending on navigation and another on code change
-        this.timeoutBeforeFirstInterrupt = this.getRandomWaitTime(); // Random wait time before first interruption
-        this.initialize();
+        this.currentInterruptionIndex = 0;
+        this.interruptionCount = 0; // Limit to 3 valid interruptions
+        this.timeoutBeforeFirstInterrupt = this.getRandomWaitTime();
     }
 
     initialize() {
-        console.log(`Initialization: Interruption will start after a random time between 11 and 13 minutes.`);
+        console.log("Initializing interruption manager. First interruption (timeout) will start.");
         setTimeout(() => {
-            console.log(`Time limit reached. Starting interruptions.`);
             this.triggerTimeoutInterruption();
         }, this.timeoutBeforeFirstInterrupt);
+        vscode.window.showInformationMessage("Interruption Assistant is now active.");
     }
 
     triggerTimeoutInterruption() {
-        this.interruptionTask.startInterruption();
-        this.interruptionCount++; // This counts as the first interruption
-        this.isTimeoutTriggered = true; // Mark that the timeout has occurred
-
-        // Now, continue with navigational and code change interruptions
-        this.startNextInterruption();
+        console.log("Starting timed break interruption...");
+        
+        this.interruptionTask.startInterruption((isValid) => {
+            if (isValid) {
+                this.interruptionCount++;
+                console.log(`Timed break interruption completed. Total valid interruptions: ${this.interruptionCount}`);
+            } else {
+                console.log("Timed break was disposed early and will not be counted.");
+            }
+            this.startNextInterruption();
+        });
     }
 
     startNextInterruption() {
-        // Ensure we don't exceed the limit of 3 interruptions
-        if (this.isTimeoutTriggered && this.currentInterruptionIndex < this.interruptionQueue.length && this.interruptionCount < 3) {
-            const currentInterruption = this.interruptionQueue[this.currentInterruptionIndex];
-            if (!currentInterruption.isTriggered) {
-                console.log(`Start Monitoring: ${currentInterruption.type.constructor.name} at index ${this.currentInterruptionIndex}`);
-                currentInterruption.type.startMonitoring();
-            } else {
-                console.log(`Already triggered: ${currentInterruption.type.constructor.name}, moving to next.`);
-                this.currentInterruptionIndex++;
-                this.startNextInterruption(); // Recursively start next interruption if current is already triggered
-            }
-        } else if (this.interruptionCount >= 3) {
-            console.log("Maximum of 3 interruptions reached. No further interruptions.");
+        if (this.interruptionCount >= 3) {
+            console.log("Maximum of 3 interruptions reached. No further interruptions will be scheduled.");
+            return;
+        }
+
+        const currentInterruption = this.interruptionQueue[this.currentInterruptionIndex];
+        
+        if (!currentInterruption.isTriggered) {
+            console.log(`Triggering next interruption: ${currentInterruption.type.constructor.name}`);
+            currentInterruption.type.startMonitoring(() => {
+                this.interruptionTask.startInterruption((isValid) => {
+                    if (isValid) {
+                        this.interruptionCount++;
+                        console.log(`Interruption (${currentInterruption.type.constructor.name}) completed. Total valid interruptions: ${this.interruptionCount}`);
+                    } else {
+                        console.log(`Interruption (${currentInterruption.type.constructor.name}) disposed early and will not be counted.`);
+                    }
+
+                    this.currentInterruptionIndex++;
+                    this.startNextInterruption(); // Move to the next interruption type if available
+                });
+            });
+            currentInterruption.isTriggered = true;
+        } else {
+            console.log(`${currentInterruption.type.constructor.name} already triggered, moving to the next.`);
+            this.currentInterruptionIndex++;
+            this.startNextInterruption();
         }
     }
 
     triggerInterruption() {
-        const currentInterruption = this.interruptionQueue[this.currentInterruptionIndex];
+        console.log("Manually triggering an interruption...");
 
-        if (!currentInterruption.isTriggered && this.interruptionCount < 3) {
-            console.log(`Triggering: ${currentInterruption.type.constructor.name}.`);
-
-            this.interruptionTask.startInterruption();
-            currentInterruption.isTriggered = true;
-            this.interruptionCount++;
-
-            // Move to the next interruption in the sequence
-            this.currentInterruptionIndex++;
-
-            if (this.interruptionCount < 3 && this.currentInterruptionIndex < this.interruptionQueue.length) {
-                this.startNextInterruption();
+        this.interruptionTask.startInterruption((isValid) => {
+            if (isValid) {
+                this.interruptionCount++;
+                console.log(`Manual interruption completed. Total valid interruptions: ${this.interruptionCount}`);
+            } else {
+                console.log("Manual interruption was disposed early and will not be counted.");
             }
-        } else {
-            console.log(`Skipping trigger: ${currentInterruption.type.constructor.name} already triggered or max interruptions reached.`);
-        }
+
+            this.startNextInterruption(); // Schedule the next interruption after the manual one
+        });
     }
 
     getRandomWaitTime() {
         const minTimeout = minutesToMilliseconds(11);
         const maxTimeout = minutesToMilliseconds(13);
-
-        // Return a random number between the min and max timeout
         return Math.floor(Math.random() * (maxTimeout - minTimeout + 1)) + minTimeout;
     }
 }
