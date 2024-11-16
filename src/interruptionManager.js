@@ -11,6 +11,7 @@ class InterruptionManager {
         this.context = context;
         this.interruptionTask = new InterruptionTask(context, this);
         this.interruptionCount = 0; // Track the number of valid interruptions
+        this.isInterruptionActive = false;
     }
 
     initialize() {
@@ -24,19 +25,33 @@ class InterruptionManager {
             return;
         }
 
+        if (this.isInterruptionActive) {
+            console.log("An interruption is already active. Scheduling skipped.");
+            return;
+        }
+
         const randomTimeout = this.getRandomWaitTime();
         console.log(`Next interruption scheduled in ${randomTimeout / 60000} minutes.`);
 
         setTimeout(() => {
-            this.triggerInterruption();
+            if(!this.isInterruptionActive) {
+                this.triggerInterruption();
+            }
         }, randomTimeout);
     }
 
     triggerInterruption() {
+        if (this.isInterruptionActive) {
+            console.log("Skipping trigger as an interruption is already active.");
+            return;
+        }
+
         console.log("Triggering an interruption...");
+        this.isInterruptionActive = true;
 
         this.interruptionTask.startInterruption(() => {
             // Callback on valid completion of the interruption
+            this.isInterruptionActive = false; // reset after completion
             this.interruptionCount++;
             console.log(`Interruption complete. Total valid interruptions: ${this.interruptionCount}`);
             this.scheduleNextInterruption(); // Schedule the next interruption

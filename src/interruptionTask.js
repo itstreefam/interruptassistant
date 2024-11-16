@@ -10,39 +10,125 @@ class InterruptionTask {
         this.timer = null;
     }
 
+    // startInterruption(onComplete) {
+    //     // Save the current workspace before starting the interruption
+    //     // And then close all editors
+    //     vscode.commands.executeCommand('workbench.action.files.saveAll').then(() => {
+    //         vscode.commands.executeCommand('workbench.action.closeAllEditors');
+    //     });
+
+    //     // Create a new webview panel for the interruption task
+    //     const panel = vscode.window.createWebviewPanel(
+    //         'interruptassistant',
+    //         'Interrupting Task',
+    //         vscode.ViewColumn.One,
+    //         { enableScripts: true }
+    //     );
+
+    //     this.startTimer(panel, onComplete);
+    //     this.showNextProblem(panel); // Display the first math problem
+
+    //     // Listen for messages from the webview
+    //     panel.webview.onDidReceiveMessage(message => {
+    //         const isCorrect = this.checkAnswer(message.answer);
+    //         this.correctAnswers += isCorrect ? 1 : 0;
+
+    //         if (this.currentProblemIndex < this.totalProblems - 1) {
+    //             this.currentProblemIndex++;
+    //             this.showNextProblem(panel); // Show the next problem
+    //         } else {
+    //             this.finishInterruption(panel, onComplete); // Finish when all problems are answered
+    //         }
+    //     });
+
+    //     panel.onDidDispose(() => {
+    //         console.log("Webview was disposed before completion.");
+    //         clearTimeout(this.timer); // Clear the timer if the panel is closed early
+
+    //         // // Reschedule the next interruption immediately since this one was not completed
+    //         this.interruptionManager.isInterruptionActive = false; // Reset active flag
+    //         this.interruptionManager.scheduleNextInterruption();
+            
+    //         // this.interruptionManager.triggerInterruption(); // Immediately trigger another interruption
+    //     });
+    // }
+
     startInterruption(onComplete) {
-        vscode.commands.executeCommand('workbench.action.closeAllEditors');
+        console.log("Starting interruption: saving files and closing editors.");
+    
+        // Save all files
+        // vscode.commands.executeCommand('workbench.action.files.saveAll').then(() => {
+        //     // Close all editors
+        //     return vscode.commands.executeCommand('workbench.action.closeAllEditors');
+        // }).then(() => {
+        //     // Once all editors are closed, create the interruption panel
+        //     console.log("Files saved and editors closed. Opening interruption panel...");
+    
+        //     const panel = vscode.window.createWebviewPanel(
+        //         'interruptassistant',
+        //         'Interrupting Task',
+        //         vscode.ViewColumn.One,
+        //         { enableScripts: true }
+        //     );
+    
+        //     this.setupInterruptionPanel(panel, onComplete);
+        // }).catch(err => {
+        //     console.error("Error during interruption setup:", err);
+        // });
 
-        // Create a new webview panel for the interruption task
-        const panel = vscode.window.createWebviewPanel(
-            'interruptassistant',
-            'Interrupting Task',
-            vscode.ViewColumn.One,
-            { enableScripts: true }
-        );
+        // Save all files
+        vscode.commands.executeCommand('workbench.action.files.saveAll').then(() => {
+            const panel = vscode.window.createWebviewPanel(
+                'interruptassistant',
+                'Interrupting Task',
+                vscode.ViewColumn.One,
+                { enableScripts: true }
+            );
+    
+            this.setupInterruptionPanel(panel, onComplete);
+        }).catch(err => {
+            console.error("Error during interruption setup:", err);
+        });
+    }
 
+    // Separate logic for panel setup
+    setupInterruptionPanel(panel, onComplete) {
         this.startTimer(panel, onComplete);
-        this.showNextProblem(panel); // Display the first math problem
+        this.showNextProblem(panel); // Show the first math problem
 
-        // Listen for messages from the webview
+        // Handle user interaction with the panel
         panel.webview.onDidReceiveMessage(message => {
-            const isCorrect = this.checkAnswer(message.answer);
+            // Validate and parse user input
+            const userAnswer = parseInt(message.answer, 10);
+
+            if (isNaN(userAnswer)) {
+                console.error("Invalid answer received:", message.answer);
+                return; // Ignore invalid answers
+            }
+
+            // Check if the answer is correct
+            const isCorrect = this.checkAnswer(userAnswer);
             this.correctAnswers += isCorrect ? 1 : 0;
 
+            console.log(`Question ${this.currentProblemIndex + 1}: Received answer: ${userAnswer}, Correct: ${isCorrect}`);
+            console.log(`Total correct answers so far: ${this.correctAnswers}`);
+
+            // Move to the next question or finish the task
             if (this.currentProblemIndex < this.totalProblems - 1) {
                 this.currentProblemIndex++;
                 this.showNextProblem(panel); // Show the next problem
             } else {
-                this.finishInterruption(panel, onComplete); // Finish when all problems are answered
+                console.log("All questions answered. Finishing interruption.");
+                this.finishInterruption(panel, onComplete);
             }
         });
 
+        // Handle premature panel disposal
         panel.onDidDispose(() => {
-            console.log("Webview was disposed before completion.");
-            clearTimeout(this.timer); // Clear the timer if the panel is closed early
-
-            // Reschedule the next interruption immediately since this one was not completed
-            this.interruptionManager.scheduleNextInterruption();
+            console.log("Interruption panel was disposed before completion.");
+            this.resetState(); // Reset state if the panel is closed early
+            this.interruptionManager.isInterruptionActive = false; // Reset active flag
+            this.interruptionManager.scheduleNextInterruption(); // Retry interruption immediately
         });
     }
 
@@ -77,18 +163,20 @@ class InterruptionTask {
                             margin: 0;
                             font-family: Arial, sans-serif;
                         }
-    
                         #container {
                             text-align: center;
                         }
-    
-                        span {
-                            font-size: 5em;
-                            margin-right: 0.5em;
+                        #header {
+                            margin-bottom: 20px;
                         }
-    
-                        input {
+                        #equation-container {
+                            display: flex;
+                            align-items: center;
                             font-size: 5em;
+                            margin-bottom: 20px;
+                        }
+                        input {
+                            font-size: 1em;
                             width: 4em;
                             text-align: center;
                             margin-left: 0.5em;
@@ -98,7 +186,6 @@ class InterruptionTask {
                             background-color: #444;
                             color: white;
                         }
-    
                         button {
                             font-size: 2em;
                             padding: 0.5em 1.5em;
@@ -110,29 +197,44 @@ class InterruptionTask {
                             transition: background-color 0.3s ease;
                             margin-top: 1em;
                         }
-    
-                        button:hover {
+                        button:disabled {
+                            background-color: #666;
+                            cursor: not-allowed;
+                        }
+                        button:hover:enabled {
                             background-color: #005A99;
                         }
-    
-                        button:active {
+                        button:active:enabled {
                             background-color: #003D66;
                         }
                     </style>
                 </head>
                 <body>
                     <div id="container">
+                    <div id="header">
+                        <h1>Interruption Task</h1>
+                        <p>Please complete this task to continue. The panel should not be closed manually.</p>
+                    </div>
+                    <div id="equation-container">
                         <span>${equation} =</span>
                         <input type="number" id="answer" />
-                        <br>
-                        <button onclick="submitAnswer()">Submit</button>
                     </div>
+                    <button id="submitButton" disabled>Submit</button>
+                </div>
                 </body>
                 <script>
                     const vscode = acquireVsCodeApi();
     
+                    const answerInput = document.getElementById('answer');
+                    const submitButton = document.getElementById('submitButton');
+    
+                    // Enable or disable the submit button based on input
+                    answerInput.addEventListener('input', () => {
+                        submitButton.disabled = answerInput.value.trim() === '';
+                    });
+    
                     function submitAnswer() {
-                        const answer = document.getElementById('answer').value;
+                        const answer = answerInput.value.trim();
                         if (answer === '' || isNaN(answer)) {
                             alert('Please enter a valid number.');
                         } else {
@@ -140,7 +242,8 @@ class InterruptionTask {
                         }
                     }
     
-                    document.getElementById('answer').focus();
+                    submitButton.addEventListener('click', submitAnswer);
+                    answerInput.focus();
                 </script>
             </html>
         `;
@@ -160,7 +263,7 @@ class InterruptionTask {
 
     finishInterruption(panel, onComplete) {
         panel.dispose();
-        vscode.window.showInformationMessage(`Interruption complete. You answered ${this.correctAnswers} out of ${this.totalProblems} correctly.`);
+        // vscode.window.showInformationMessage(`Interruption complete. You answered ${this.correctAnswers} out of ${this.totalProblems} correctly.`);
 
         this.resetState();
 
