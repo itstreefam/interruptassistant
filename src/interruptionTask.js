@@ -1,4 +1,6 @@
 const vscode = require('vscode');
+const fs = require('fs');
+const path = require('path');
 
 class InterruptionTask {
     constructor(context, interruptionManager) {
@@ -8,52 +10,15 @@ class InterruptionTask {
         this.totalProblems = 10; // Number of questions in each interruption
         this.correctAnswers = 0;
         this.timer = null;
+
+        this.startTime = null;
+        this.questionsAndAnswers = []; // store questions and answers
+        this.editEvents = {lastEditBefore: null, firstEditAfter: null};
+        this.stateSaved = false;
     }
 
-    // startInterruption(onComplete) {
-    //     // Save the current workspace before starting the interruption
-    //     // And then close all editors
-    //     vscode.commands.executeCommand('workbench.action.files.saveAll').then(() => {
-    //         vscode.commands.executeCommand('workbench.action.closeAllEditors');
-    //     });
-
-    //     // Create a new webview panel for the interruption task
-    //     const panel = vscode.window.createWebviewPanel(
-    //         'interruptassistant',
-    //         'Interrupting Task',
-    //         vscode.ViewColumn.One,
-    //         { enableScripts: true }
-    //     );
-
-    //     this.startTimer(panel, onComplete);
-    //     this.showNextProblem(panel); // Display the first math problem
-
-    //     // Listen for messages from the webview
-    //     panel.webview.onDidReceiveMessage(message => {
-    //         const isCorrect = this.checkAnswer(message.answer);
-    //         this.correctAnswers += isCorrect ? 1 : 0;
-
-    //         if (this.currentProblemIndex < this.totalProblems - 1) {
-    //             this.currentProblemIndex++;
-    //             this.showNextProblem(panel); // Show the next problem
-    //         } else {
-    //             this.finishInterruption(panel, onComplete); // Finish when all problems are answered
-    //         }
-    //     });
-
-    //     panel.onDidDispose(() => {
-    //         console.log("Webview was disposed before completion.");
-    //         clearTimeout(this.timer); // Clear the timer if the panel is closed early
-
-    //         // // Reschedule the next interruption immediately since this one was not completed
-    //         this.interruptionManager.isInterruptionActive = false; // Reset active flag
-    //         this.interruptionManager.scheduleNextInterruption();
-            
-    //         // this.interruptionManager.triggerInterruption(); // Immediately trigger another interruption
-    //     });
-    // }
-
     startInterruption(onComplete) {
+        this.stateSaved = false; // Reset stateSaved when a new interruption starts
         console.log("Starting interruption: saving files and closing editors.");
     
         // Save all files
@@ -84,7 +49,9 @@ class InterruptionTask {
                 vscode.ViewColumn.One,
                 { enableScripts: true }
             );
-    
+            // Save the start time of the interruption in seconds
+            this.startTime = Math.floor(Date.now() / 1000);
+
             this.setupInterruptionPanel(panel, onComplete);
         }).catch(err => {
             console.error("Error during interruption setup:", err);
@@ -108,6 +75,11 @@ class InterruptionTask {
 
             // Check if the answer is correct
             const isCorrect = this.checkAnswer(userAnswer);
+
+            // Update the question and answer object
+            this.questionsAndAnswers[this.currentProblemIndex].userAnswer = userAnswer;
+            this.questionsAndAnswers[this.currentProblemIndex].isCorrect = isCorrect;
+
             this.correctAnswers += isCorrect ? 1 : 0;
 
             console.log(`Question ${this.currentProblemIndex + 1}: Received answer: ${userAnswer}, Correct: ${isCorrect}`);
@@ -125,17 +97,23 @@ class InterruptionTask {
 
         // Handle premature panel disposal
         panel.onDidDispose(() => {
-            console.log("Interruption panel was disposed before completion.");
-            this.resetState(); // Reset state if the panel is closed early
-            this.interruptionManager.isInterruptionActive = false; // Reset active flag
-            this.interruptionManager.scheduleNextInterruption(); // Retry interruption immediately
+            // if the panel is closed before the interruption is completed
+            if (!this.stateSaved) {
+                console.log("Interruption panel closed prematurely.");
+                console.log("Interruption panel was disposed before completion.");
+                this.resetState(); // Reset state if the panel is closed early
+                this.interruptionManager.isInterruptionActive = false; // Reset active flag
+                this.interruptionManager.scheduleNextInterruption(); // Retry interruption immediately
+            }
         });
     }
 
     startTimer(panel, onComplete) {
         this.timer = setTimeout(() => {
             console.log("Interruption time limit reached.");
-            this.finishInterruption(panel, onComplete); // Automatically finish after 3 minutes
+            if (!this.stateSaved) {
+                this.finishInterruption(panel, onComplete);
+            }
         }, 3 * 60 * 1000);
     }
 
@@ -143,6 +121,14 @@ class InterruptionTask {
         const multiplicand1 = this.generateRandomDoubleDigit();
         const multiplicand2 = this.generateRandomDoubleDigit();
         const equation = `${multiplicand1} x ${multiplicand2}`;
+
+        // store the question and the correct answer
+        this.questionsAndAnswers.push({
+            question: equation,
+            correctAnswer: multiplicand1 * multiplicand2,
+            userAnswer: null,
+            isCorrect: null,
+        });
         
         panel.webview.html = this.getWebviewContent(equation);
         this.currentAnswer = multiplicand1 * multiplicand2; // Store the correct answer
@@ -262,13 +248,56 @@ class InterruptionTask {
     }
 
     finishInterruption(panel, onComplete) {
-        panel.dispose();
-        // vscode.window.showInformationMessage(`Interruption complete. You answered ${this.correctAnswers} out of ${this.totalProblems} correctly.`);
+        if (this.stateSaved) {
+            console.warn("Interruption already saved. Skipping duplicate save.");
+            return;
+        }
+    
+        this.stateSaved = true; // Mark state as saved to prevent duplicates 
+        
+        let correctAnswers = this.correctAnswers;
+        let totalProblems = this.totalProblems;
 
-        this.resetState();
+        // Save the end time of the interruption in seconds
+        this.endTime = Math.floor(Date.now() / 1000);
+
+        vscode.window.showInformationMessage(`Interruption complete. You answered ${correctAnswers} correctly.`);
+        // console.log(this.questionsAndAnswers);
+
+        const interruptionData = {
+            startTime: this.startTime,
+            endTime: this.endTime,
+            questionsAndAnswers: this.questionsAndAnswers,
+            editEvents: this.editEvents,
+        };
+
+        // console.log("Interruption data:", interruptionData);
+
+        const interruptionDataString = JSON.stringify(interruptionData);
+        console.log(interruptionDataString);
+
+        // Save the interruption data to a file
+        const cwd = this.getCwd();
+        // resolve path to CH_cfg_and_logs/interruptionLogs.json
+	    const interruptionLogsPath = `${cwd}/CH_cfg_and_logs/interruptionLogs.json`;
+
+        fs.appendFile(interruptionLogsPath, interruptionDataString + '\n', (err) => {
+            if (err) {
+                console.error("Error saving interruption data:", err);
+                vscode.window.showErrorMessage("Failed to save interruption data.");
+            } else {
+                console.log("Interruption data saved successfully.");
+                this.stateSaved = true; // Only reset if saving succeeds
+                this.resetState();
+            }
+        });
+
+        panel.dispose();
 
         // Notify InterruptionManager of valid interruption completion
         if (onComplete) onComplete();
+
+        this.resetState();
     }
 
     resetState() {
@@ -276,6 +305,22 @@ class InterruptionTask {
         this.correctAnswers = 0;
         clearTimeout(this.timer);
         this.timer = null;
+
+        // Preserve questionsAndAnswers and editEvents for logging
+        this.questionsAndAnswers = [];
+        this.editEvents = { lastEditBefore: null, firstEditAfter: null };
+    }
+
+    getCwd() {
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+    
+        if (workspaceFolders && workspaceFolders.length > 0) {
+            // Return the URI path of the first workspace folder
+            return workspaceFolders[0].uri.fsPath;
+        } else {
+            console.error("No workspace folder is open.");
+            return null;
+        }
     }
 }
 
