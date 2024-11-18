@@ -17,45 +17,53 @@ class InterruptionTask {
         this.stateSaved = false;
     }
 
-    startInterruption(onComplete) {
-        this.stateSaved = false; // Reset stateSaved when a new interruption starts
-        console.log("Starting interruption: saving files and closing editors.");
+    async startInterruption(onComplete) {
+        this.stateSaved = false;
+        console.log("Starting interruption: saving files and closing editors (excluding Webview panels).");
     
-        // Save all files
-        // vscode.commands.executeCommand('workbench.action.files.saveAll').then(() => {
-        //     // Close all editors
-        //     return vscode.commands.executeCommand('workbench.action.closeAllEditors');
-        // }).then(() => {
-        //     // Once all editors are closed, create the interruption panel
-        //     console.log("Files saved and editors closed. Opening interruption panel...");
+        try {
+            // Save all files first
+            await vscode.commands.executeCommand('workbench.action.files.saveAll');
     
-        //     const panel = vscode.window.createWebviewPanel(
-        //         'interruptassistant',
-        //         'Interrupting Task',
-        //         vscode.ViewColumn.One,
-        //         { enableScripts: true }
-        //     );
+            // Get all editor groups
+            const groups = vscode.window.tabGroups.all;
+            
+            // Close editors in all groups except Webview panels
+            for (const group of groups) {
+                for (const tab of group.tabs) {
+                    // Skip if it's a Webview panel
+                    if (tab.label.includes('Webview')) {
+                        console.log(`Skipping Webview tab: ${tab.label}`);
+                        continue;
+                    }
     
-        //     this.setupInterruptionPanel(panel, onComplete);
-        // }).catch(err => {
-        //     console.error("Error during interruption setup:", err);
-        // });
-
-        // Save all files
-        vscode.commands.executeCommand('workbench.action.files.saveAll').then(() => {
+                    // Close the specific editor
+                    await vscode.window.tabGroups.close(tab);
+                    console.log(`Closed editor: ${tab.label}`);
+                }
+            }
+    
+            // Create the interruption panel
             const panel = vscode.window.createWebviewPanel(
                 'interruptassistant',
                 'Interrupting Task',
                 vscode.ViewColumn.One,
-                { enableScripts: true }
+                { 
+                    enableScripts: true,
+                    retainContextWhenHidden: true // Keep the panel's content when hidden
+                }
             );
+    
             // Save the start time of the interruption in seconds
             this.startTime = Math.floor(Date.now() / 1000);
-
-            this.setupInterruptionPanel(panel, onComplete);
-        }).catch(err => {
+    
+            // Setup the interruption panel
+            await this.setupInterruptionPanel(panel, onComplete);
+    
+        } catch (err) {
             console.error("Error during interruption setup:", err);
-        });
+            throw err; // Re-throw the error for proper error handling upstream
+        }
     }
 
     // Separate logic for panel setup
@@ -279,7 +287,7 @@ class InterruptionTask {
         // Save the interruption data to a file
         const cwd = this.getCwd();
         // resolve path to CH_cfg_and_logs/interruptionLogs.json
-	    const interruptionLogsPath = `${cwd}/CH_cfg_and_logs/interruptionLogs.json`;
+	    const interruptionLogsPath = path.join(cwd, 'CH_cfg_and_logs', 'interruptionLogs.json');
 
         fs.appendFile(interruptionLogsPath, interruptionDataString + '\n', (err) => {
             if (err) {
