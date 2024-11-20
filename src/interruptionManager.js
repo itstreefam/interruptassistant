@@ -24,21 +24,15 @@ class InterruptionManager {
             console.log("Maximum of 3 interruptions reached. No further interruptions will be scheduled.");
             return;
         }
-
-        if (this.isInterruptionActive) {
-            console.log("An interruption is already active. Scheduling skipped.");
-            return;
-        }
-
+    
         const randomTimeout = this.getRandomWaitTime();
         console.log(`Next interruption scheduled in ${randomTimeout / 60000} minutes.`);
-
+    
         setTimeout(() => {
-            if(!this.isInterruptionActive) {
-                this.triggerInterruption();
-            }
+            console.log("Timeout completed. Triggering interruption...");
+            this.triggerInterruption();
         }, randomTimeout);
-    }
+    }    
 
     triggerInterruption() {
         if (this.isInterruptionActive) {

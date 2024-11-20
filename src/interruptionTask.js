@@ -25,22 +25,37 @@ class InterruptionTask {
             // Save all files first
             await vscode.commands.executeCommand('workbench.action.files.saveAll');
     
+            // Ensure the sidebar is closed
+            await vscode.commands.executeCommand('workbench.action.closeSidebar');
+    
             // Get all editor groups
             const groups = vscode.window.tabGroups.all;
-            
+    
+            // Flag to check if any "Webview" tabs were found
+            let webviewFound = false;
+    
             // Close editors in all groups except Webview panels
             for (const group of groups) {
                 for (const tab of group.tabs) {
-                    // Skip if it's a Webview panel
                     if (tab.label.includes('Webview')) {
                         console.log(`Skipping Webview tab: ${tab.label}`);
+                        webviewFound = true;
                         continue;
                     }
     
                     // Close the specific editor
-                    await vscode.window.tabGroups.close(tab);
-                    console.log(`Closed editor: ${tab.label}`);
+                    try {
+                        await vscode.window.tabGroups.close(tab);
+                        console.log(`Closed editor: ${tab.label}`);
+                    } catch (closeErr) {
+                        console.error(`Error closing editor ${tab.label}:`, closeErr);
+                    }
                 }
+            }
+    
+            // Log a warning if no "Webview" tabs were found
+            if (!webviewFound) {
+                console.warn("No Webview tabs were found. Proceeding with interruption setup.");
             }
     
             // Create the interruption panel
@@ -64,7 +79,7 @@ class InterruptionTask {
             console.error("Error during interruption setup:", err);
             throw err; // Re-throw the error for proper error handling upstream
         }
-    }
+    }    
 
     // Separate logic for panel setup
     setupInterruptionPanel(panel, onComplete) {
@@ -208,6 +223,7 @@ class InterruptionTask {
                     <div id="header">
                         <h1>Interruption Task</h1>
                         <p>Please complete this task to continue. The panel should not be closed manually.</p>
+                        <p>For each correct answer, you will receive $0.2.</p>
                     </div>
                     <div id="equation-container">
                         <span>${equation} =</span>
