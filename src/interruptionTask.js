@@ -41,7 +41,7 @@ class InterruptionTask {
             console.error("Error loading questions:", error.message);
             vscode.window.showErrorMessage(`Failed to load questions: ${error.message}`);
         }
-    }    
+    }
 
     async startInterruption(onComplete) {
         this.stateSaved = false;
@@ -121,28 +121,56 @@ class InterruptionTask {
     setupInterruptionPanel(panel, onComplete) {
         this.startTimer(panel, onComplete);
     
-        // Listen for messages from the webview
+        // // Listen for messages from the webview
+        // panel.webview.onDidReceiveMessage(message => {
+        //     if (message.answer) {
+        //         const userAnswer = message.answer.trim();
+        //         const currentQuestion = this.questions[this.currentProblemIndex];
+    
+        //         // Check if the answer is correct
+        //         const isCorrect = userAnswer === currentQuestion.correct_answer;
+        //         this.correctAnswers += isCorrect ? 1 : 0;
+    
+        //         console.log(`Question ${this.currentProblemIndex + 1}: Received answer: ${userAnswer}, Correct: ${isCorrect}`);
+    
+        //         // Move to the next question or finish the task
+        //         if (this.currentProblemIndex < this.questions.length - 1) {
+        //             this.currentProblemIndex++;
+        //             this.showNextQuestion(panel); // Replace HTML for the next question
+        //         } else {
+        //             console.log("All questions answered. Finishing interruption.");
+        //             this.finishInterruption(panel, onComplete);
+        //         }
+        //     }
+        // });
+
+        // panel.webview.onDidReceiveMessage(message => {
+        //     if (message.answers) {
+        //         console.log("Received answers:", message.answers);
+    
+        //         const { answer1, answer2, answer3, answer4 } = message.answers;
+        //         console.log(`Answer 1: ${answer1}, Answer 2: ${answer2}, Answer 3: ${answer3}, Answer 4: ${answer4}`);
+    
+        //         // End the interruption after submission
+        //         this.finishInterruption(panel, onComplete);
+        //     }
+        // });
+
         panel.webview.onDidReceiveMessage(message => {
-            if (message.answer) {
-                const userAnswer = message.answer.trim();
-                const currentQuestion = this.questions[this.currentProblemIndex];
-    
-                // Check if the answer is correct
-                const isCorrect = userAnswer === currentQuestion.correct_answer;
-                this.correctAnswers += isCorrect ? 1 : 0;
-    
-                console.log(`Question ${this.currentProblemIndex + 1}: Received answer: ${userAnswer}, Correct: ${isCorrect}`);
-    
-                // Move to the next question or finish the task
-                if (this.currentProblemIndex < this.questions.length - 1) {
-                    this.currentProblemIndex++;
-                    this.showNextQuestion(panel); // Replace HTML for the next question
+            if (message.answers) {
+                console.log("Received answers:", message.answers);
+                this.questionsAndAnswers.push({
+                    problem: this.questions[this.currentProblemIndex],
+                    answers: message.answers
+                });
+                this.currentProblemIndex++;
+                if (this.currentProblemIndex < this.totalProblems) {
+                    this.showNextQuestion(panel);
                 } else {
-                    console.log("All questions answered. Finishing interruption.");
                     this.finishInterruption(panel, onComplete);
                 }
             }
-        });
+        });        
     
         panel.onDidDispose(() => {
             if (!this.stateSaved) {
@@ -163,15 +191,165 @@ class InterruptionTask {
         }, 3 * 60 * 1000);
     }
 
+    // showNextQuestion(panel) {
+    //     const question = this.questions[this.currentProblemIndex];
+    //     console.log("Displaying question:", question); // Debug log
+    
+    //     // Replace the webview content entirely
+    //     panel.webview.html = this.getWebviewContent(question);
+    // }   
+    
     showNextQuestion(panel) {
-        const question = this.questions[this.currentProblemIndex];
-        console.log("Displaying question:", question); // Debug log
+        const problem = this.questions[this.currentProblemIndex];
+        panel.webview.html = this.getWebviewContent(problem);
+    }
     
-        // Replace the webview content entirely
-        panel.webview.html = this.getWebviewContent(question);
+    // getWebviewContent() {
+    //     return `
+    //         <html>
+    //             <head>
+    //                 <style>
+    //                     body {
+    //                         font-family: Arial, sans-serif;
+    //                         margin: 20px;
+    //                         padding: 20px;
+    //                         background-color: #f9f9f9;
+    //                         color: #333;
+    //                         border: 1px solid #ccc;
+    //                         border-radius: 10px;
+    //                     }
+    //                     h1 {
+    //                         text-align: center;
+    //                         font-size: 1.5em;
+    //                         margin-bottom: 20px;
+    //                     }
+    //                     .container {
+    //                         display: flex;
+    //                         flex-direction: row;
+    //                         justify-content: space-between;
+    //                         gap: 20px;
+    //                     }
+    //                     .column {
+    //                         flex: 1;
+    //                         border: 1px solid #ccc;
+    //                         border-radius: 10px;
+    //                         padding: 20px;
+    //                         background-color: #fff;
+    //                     }
+    //                     .snippet {
+    //                         border: 1px solid #999;
+    //                         background-color: #eee;
+    //                         height: 150px;
+    //                         text-align: center;
+    //                         line-height: 150px;
+    //                         font-size: 1em;
+    //                         margin-bottom: 20px;
+    //                         border-radius: 5px;
+    //                     }
+    //                     .question {
+    //                         margin-bottom: 10px;
+    //                         font-size: 0.9em;
+    //                     }
+    //                     input {
+    //                         width: 100%;
+    //                         padding: 8px;
+    //                         font-size: 0.9em;
+    //                         margin-bottom: 20px;
+    //                         border: 1px solid #ccc;
+    //                         border-radius: 5px;
+    //                     }
+    //                     button {
+    //                         background-color: #007acc;
+    //                         color: white;
+    //                         border: none;
+    //                         border-radius: 5px;
+    //                         padding: 10px 20px;
+    //                         font-size: 1em;
+    //                         cursor: pointer;
+    //                         margin-top: 10px;
+    //                         display: block;
+    //                         width: 100%;
+    //                         text-align: center;
+    //                         transition: background-color 0.3s ease;
+    //                     }
+    //                     button[disabled] {
+    //                         background-color: #cccccc;
+    //                         cursor: not-allowed;
+    //                     }
+    //                     button:hover:not([disabled]) {
+    //                         background-color: #005a9e;
+    //                     }
+    //                 </style>
+    //             </head>
+    //             <body>
+    //                 <h1>Code Comprehension Task</h1>
+    //                 <p>Two solutions are provided as below to solve the same question:</p>
+    //                 <div class="container">
+    //                     <div class="column">
+    //                         <h2>Solution 1</h2>
+    //                         <div class="snippet">Code Snippet 1</div>
+    //                         <div class="question">1. For input X, what is the output?</div>
+    //                         <input type="text" id="answer1" placeholder="Answer here" oninput="checkInputs()">
+    //                         <div class="question">2. For input Y, what is the output?</div>
+    //                         <input type="text" id="answer2" placeholder="Answer here" oninput="checkInputs()">
+    //                     </div>
+    //                     <div class="column">
+    //                         <h2>Solution 2</h2>
+    //                         <div class="snippet">Code Snippet 2</div>
+    //                         <div class="question">3. What is the time complexity for Solution 1?</div>
+    //                         <input type="text" id="answer3" placeholder="Answer here" oninput="checkInputs()">
+    //                         <div class="question">4. What is the time complexity for Solution 2?</div>
+    //                         <input type="text" id="answer4" placeholder="Answer here" oninput="checkInputs()">
+    //                     </div>
+    //                 </div>
+    //                 <button id="submitButton" onclick="submitAnswers()" disabled>Submit</button>
+    //                 <script>
+    //                     const vscode = acquireVsCodeApi();
+    
+    //                     // Enable the submit button only if all fields are filled
+    //                     function checkInputs() {
+    //                         const answer1 = document.getElementById('answer1').value.trim();
+    //                         const answer2 = document.getElementById('answer2').value.trim();
+    //                         const answer3 = document.getElementById('answer3').value.trim();
+    //                         const answer4 = document.getElementById('answer4').value.trim();
+    
+    //                         const allFilled = answer1 && answer2 && answer3 && answer4;
+    //                         document.getElementById('submitButton').disabled = !allFilled;
+    //                     }
+    
+    //                     function submitAnswers() {
+    //                         const answer1 = document.getElementById('answer1').value.trim();
+    //                         const answer2 = document.getElementById('answer2').value.trim();
+    //                         const answer3 = document.getElementById('answer3').value.trim();
+    //                         const answer4 = document.getElementById('answer4').value.trim();
+    
+    //                         vscode.postMessage({
+    //                             answers: {
+    //                                 answer1,
+    //                                 answer2,
+    //                                 answer3,
+    //                                 answer4
+    //                             }
+    //                         });
+    //                     }
+    //                 </script>
+    //             </body>
+    //         </html>
+    //     `;
+    // }    
+
+    generateQuestionsHtml(questions) {
+        return questions.map((q, i) => `
+            <div class="question">
+                <p>${q.question}</p>
+                <input type="text" placeholder="Answer ${i + 1}" />
+            </div>
+        `).join('');
     }    
-    
-    getWebviewContent(question) {
+
+    getWebviewContent(problem) {
+        const solutions = Object.values(problem.solutions);
+        const hasTwoSnippets = solutions.length > 1;
         return `
             <html>
                 <head>
@@ -179,64 +357,87 @@ class InterruptionTask {
                         body {
                             font-family: Arial, sans-serif;
                             margin: 20px;
-                            background-color: #1e1e1e;
-                            color: #d4d4d4;
+                            padding: 20px;
+                            background-color: #f9f9f9;
+                            color: #333;
                         }
-                        pre {
-                            background-color: #252526;
+                        .container {
+                            display: ${hasTwoSnippets ? 'flex' : 'block'};
+                            justify-content: space-between;
+                            gap: 20px;
+                        }
+                        .column {
+                            flex: 1;
+                            border: 1px solid #ccc;
+                            padding: 20px;
+                            background-color: #fff;
+                        }
+                        .snippet {
+                            background: #eee;
                             padding: 10px;
-                            border-radius: 5px;
-                            font-size: 1em;
-                            overflow-x: auto;
+                            margin-bottom: 20px;
+                            border: 1px solid #ccc;
                             white-space: pre-wrap;
                         }
-                        .answer-btn {
+                        .question {
+                            margin-top: 10px;
+                        }
+                        input {
+                            width: 100%;
+                            margin-top: 5px;
+                            padding: 8px;
+                        }
+                        button {
+                            margin-top: 20px;
+                            padding: 10px;
                             background-color: #007acc;
                             color: white;
                             border: none;
-                            border-radius: 5px;
-                            padding: 10px 15px;
-                            font-size: 1em;
                             cursor: pointer;
-                            margin-bottom: 10px;
-                            display: block;
-                            width: 100%;
-                            text-align: left;
+                            transition: background-color 0.3s;
                         }
-                        .answer-btn:hover {
-                            background-color: #005a9e;
+                        button:disabled {
+                            background-color: #ccc;
+                            cursor: not-allowed;
                         }
                     </style>
                 </head>
                 <body>
-                    <h1>Question</h1>
-                    <pre>${question.question.replace(/\n/g, '<br>')}</pre>
-                    <h2>Choose an Answer</h2>
-                    <div id="answer-container">
-                        ${question.choices.map((choice, index) => `
-                            <button class="answer-btn" data-answer="${choice}" onclick="submitAnswer('${choice}')">${choice}</button>
-                        `).join('')}
+                    <h1>Code Comprehension Task</h1>
+                    <div class="container">
+                        <div class="column">
+                            <h2>Solution 1</h2>
+                            <div class="snippet">${solutions[0].code}</div>
+                            ${this.generateQuestionsHtml(problem.questions.slice(0, 2))}
+                        </div>
+                        ${hasTwoSnippets ? `
+                        <div class="column">
+                            <h2>Solution 2</h2>
+                            <div class="snippet">${solutions[1].code}</div>
+                            ${this.generateQuestionsHtml(problem.questions.slice(2))}
+                        </div>` : ''}
                     </div>
+                    <button id="submitButton" disabled>Submit</button>
                     <script>
                         const vscode = acquireVsCodeApi();
-    
-                        function submitAnswer(answer) {
-                            // Disable all buttons after selection
-                            const buttons = document.querySelectorAll('.answer-btn');
-                            buttons.forEach(btn => {
-                                btn.disabled = true;
-                                btn.style.opacity = '0.5';
+                        document.querySelectorAll('input').forEach(input => {
+                            input.addEventListener('input', () => {
+                                const allFilled = Array.from(document.querySelectorAll('input'))
+                                    .every(input => input.value.trim() !== '');
+                                document.getElementById('submitButton').disabled = !allFilled;
                             });
-    
-                            // Send the answer to VS Code
-                            vscode.postMessage({ answer });
-                        }
+                        });
+                        document.getElementById('submitButton').addEventListener('click', () => {
+                            const answers = Array.from(document.querySelectorAll('input'))
+                                .map(input => input.value.trim());
+                            vscode.postMessage({ answers });
+                        });
                     </script>
                 </body>
             </html>
         `;
-    }    
-
+    }
+    
     finishInterruption(panel, onComplete) {
         if (this.stateSaved) {
             console.warn("Interruption already saved. Skipping duplicate save.");

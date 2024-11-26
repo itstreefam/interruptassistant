@@ -1,0 +1,363 @@
+[
+    {
+        "id": 1,
+        "title": "Two Sum",
+        "difficulty": "Easy",
+        "acceptance_rate": 54.3,
+        "related_topics": ["Array", "Hash Table"],
+        "description": "Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.",
+        "approaches": [
+            {
+                "approach": "Brute Force",
+                "time_complexity": "O(n^2)",
+                "solutions": {
+                    "python": "def func(nums, target):\n    for i in range(len(nums)):\n        for j in range(i + 1, len(nums)):\n            if nums[i] + nums[j] == target:\n                return [i, j]\n    return None",
+                    "cpp": "#include <vector>\nusing namespace std;\nvector<int> func(vector<int>& nums, int target) {\n    for (int i = 0; i < nums.size(); ++i) {\n        for (int j = i + 1; j < nums.size(); ++j) {\n            if (nums[i] + nums[j] == target) {\n                return {i, j};\n            }\n        }\n    }\n    return {};\n}",
+                    "java": "import java.util.*;\nclass Solution {\n    public int[] func(int[] nums, int target) {\n        for (int i = 0; i < nums.length; i++) {\n            for (int j = i + 1; j < nums.length; j++) {\n                if (nums[i] + nums[j] == target) {\n                    return new int[]{i, j};\n                }\n            }\n        }\n        return null;\n    }\n}"
+                }
+            },
+            {
+                "approach": "Hash Map",
+                "time_complexity": "O(n)",
+                "solutions": {
+                    "python": "def func(nums, target):\n    num_map = {}\n    for i, num in enumerate(nums):\n        complement = target - num\n        if complement in num_map:\n            return [num_map[complement], i]\n        num_map[num] = i\n    return None",
+                    "cpp": "#include <unordered_map>\n#include <vector>\nusing namespace std;\nvector<int> func(vector<int>& nums, int target) {\n    unordered_map<int, int> num_map;\n    for (int i = 0; i < nums.size(); ++i) {\n        int complement = target - nums[i];\n        if (num_map.find(complement) != num_map.end()) {\n            return {num_map[complement], i};\n        }\n        num_map[nums[i]] = i;\n    }\n    return {};\n}",
+                    "java": "import java.util.*;\nclass Solution {\n    public int[] func(int[] nums, int target) {\n        Map<Integer, Integer> numMap = new HashMap<>();\n        for (int i = 0; i < nums.length; i++) {\n            int complement = target - nums[i];\n            if (numMap.containsKey(complement)) {\n                return new int[]{numMap.get(complement), i};\n            }\n            numMap.put(nums[i], i);\n        }\n        return null;\n    }\n}"
+                }
+            }
+        ],
+        "examples": [
+            {
+                "input": {
+                    "nums": [2, 7, 11, 15],
+                    "target": 9
+                },
+                "output": [0, 1]
+            },
+            {
+                "input": {
+                    "nums": [3, 2, 4],
+                    "target": 6
+                },
+                "output": [1, 2]
+            },
+            {
+                "input": {
+                    "nums": [3, 3],
+                    "target": 6
+                },
+                "output": [0, 1]
+            }
+        ]
+    },
+    {
+        "id": 2,
+        "title": "Majority Element",
+        "difficulty": "Easy",
+        "acceptance_rate": 56.6,
+        "related_topics": ["Array", "Divide and Conquer", "Sorting", "Hash Table"],
+        "description": "Given an array nums of size n, return the majority element.",
+        "approaches": [
+            {
+                "approach": "sorting",
+                "time_complexity": "O(nlogn)",
+                "solutions": {
+                    "python": "def func(nums):\n    nums.sort()\n    return nums[len(nums) // 2]",
+                    "cpp": "int func(vector<int>& nums) {\n    sort(nums.begin(), nums.end());\n    return nums[nums.size() / 2];\n}",
+                    "java": "class Solution {\n    public int func(int[] nums) {\n        Arrays.sort(nums);\n        return nums[nums.length / 2];\n    }\n}"
+                }
+            },
+            {
+                "approach":"Hash Map",
+                "time_complexity": "O(n)",
+                "solutions": {
+                    "python": "def func(nums):\n    num_map = {}\n    for num in nums:\n        num_map[num] = num_map.get(num, 0) + 1\n    return max(num_map, key=num_map.get)",
+                    "cpp": "#include <unordered_map>\n#include <vector>\nusing namespace std;\nint func(vector<int>& nums) {\n    unordered_map<int, int> num_map;\n    for (int num : nums) {\n        num_map[num]++;\n    }\n    int majority = 0, max_count = 0;\n    for (auto& [num, count] : num_map) {\n        if (count > max_count) {\n            majority = num;\n            max_count = count;\n        }\n    }\n    return majority;\n}",
+                    "java": "import java.util.*;\nclass Solution {\n    public int func(int[] nums) {\n        Map<Integer, Integer> numMap = new HashMap<>();\n        for (int num : nums) {\n            numMap.put(num, numMap.getOrDefault(num, 0) + 1);\n        }\n        int majority = 0, maxCount = 0;\n        for (Map.Entry<Integer, Integer> entry : numMap.entrySet()) {\n            if (entry.getValue() > maxCount) {\n                majority = entry.getKey();\n                maxCount = entry.getValue();\n            }\n        }\n        return majority;\n    }\n}"
+                }
+            }
+        ],
+        "examples": [
+            {
+                "input": {
+                    "nums": [3, 2, 3]
+                },
+                "output": 3
+            },
+            {
+                "input": {
+                    "nums": [2, 2, 1, 1, 1, 2, 2]
+                },
+                "output": 2
+            },
+            {
+                "input": {
+                    "nums": [1]
+                },
+                "output": 1
+            }
+        ]
+    },
+    {
+        "id": 3,
+        "title": "Isomorphic Strings",
+        "difficulty": "Easy",
+        "acceptance_rate": 39.7,
+        "related_topics": ["Hash Table"],
+        "description": "Given two strings s and t, determine if they are isomorphic.",
+        "approaches": [
+            {
+                "approach": "Hash Map",
+                "time_complexity": "O(n)",
+                "solutions": {
+                    "python": "def func(s, t):\n    s_map, t_map = {}, {}\n    for i in range(len(s)):\n        if s[i] in s_map and s_map[s[i]] != t[i]:\n            return False\n        if t[i] in t_map and t_map[t[i]] != s[i]:\n            return False\n        s_map[s[i]] = t[i]\n        t_map[t[i]] = s[i]\n    return True",
+                    "cpp": "bool func(string s, string t) {\n    unordered_map<char, char> sMap, tMap;\n    for (int i = 0; i < s.size(); ++i) {\n        if (sMap.count(s[i]) && sMap[s[i]] != t[i]) return false;\n        if (tMap.count(t[i]) && tMap[t[i]] != s[i]) return false;\n        sMap[s[i]] = t[i];\n        tMap[t[i]] = s[i];\n    }\n    return true;\n}",
+                    "java": "class Solution {\n    public boolean func(String s, String t) {\n        Map<Character, Character> sMap = new HashMap<>(), tMap = new HashMap<>();\n        for (int i = 0; i < s.length(); i++) {\n            if (sMap.containsKey(s.charAt(i)) && sMap.get(s.charAt(i)) != t.charAt(i)) return false;\n            if (tMap.containsKey(t.charAt(i)) && tMap.get(t.charAt(i)) != s.charAt(i)) return false;\n            sMap.put(s.charAt(i), t.charAt(i));\n            tMap.put(t.charAt(i), s.charAt(i));\n        }\n        return true;\n    }\n}"
+                }
+            },
+            {
+                "approach":"Brute Force",
+                "time_complexity": "O(n)",
+                "solutions": {
+                    "python": "def func(s, t):\n    return [s.find(i) for i in s] == [t.find(i) for i in t]",
+                    "cpp": "bool func(string s, string t) {\n    return [s.find(i) for i in s] == [t.find(i) for i in t];\n}",
+                    "java": "class Solution {\n    public boolean func(String s, String t) {\n        return Arrays.equals(\n            IntStream.range(0, s.length()).map(i -> s.indexOf(s.charAt(i))).toArray(),\n            IntStream.range(0, t.length()).map(i -> t.indexOf(t.charAt(i))).toArray()\n        );\n    }\n}"
+                }
+            }
+        ],
+        "examples": [
+            {
+                "input": {
+                    "s": "egg",
+                    "t": "add"
+                },
+                "output": true
+            },
+            {
+                "input": {
+                    "s": "foo",
+                    "t": "bar"
+                },
+                "output": false
+            },
+            {
+                "input": {
+                    "s": "paper",
+                    "t": "title"
+                },
+                "output": true
+            }
+        ]
+    },
+    {
+        "id": 4,
+        "title": "Longest Subarray of 1's After Deleting One Element",
+        "difficulty": "Medium",
+        "acceptance_rate": 61.3,
+        "related_topics": [
+            "Array",
+            "Sliding Window"
+        ],
+        "description": "Find the length of the longest subarray containing only 1's after deleting one element.",
+        "approaches": [
+            {
+                "approach": "Sliding Window",
+                "time_complexity": "O(n)",
+                "solutions": {
+                    "python": "def func(nums):\n    left = 0\n    zero_count = 0\n    max_len = 0\n\n    for right in range(len(nums)):\n        if nums[right] == 0:\n            zero_count += 1\n\n        while zero_count > 1:\n            if nums[left] == 0:\n                zero_count -= 1\n            left += 1\n\n        max_len = max(max_len, right - left)\n\n    return max_len",
+                    "cpp": "int func(vector<int>& nums) {\n    int left = 0, zero_count = 0, max_len = 0;\n\n    for (int right = 0; right < nums.size(); ++right) {\n        if (nums[right] == 0) {\n            zero_count++;\n        }\n\n        while (zero_count > 1) {\n            if (nums[left] == 0) {\n                zero_count--;\n            }\n            left++;\n        }\n\n        max_len = max(max_len, right - left);\n    }\n    return max_len;\n}",
+                    "java": "class Solution {\n    public int func(int[] nums) {\n        int left = 0, zeroCount = 0, maxLen = 0;\n\n        for (int right = 0; right < nums.length; right++) {\n            if (nums[right] == 0) zeroCount++;\n\n            while (zeroCount > 1) {\n                if (nums[left] == 0) zeroCount--;\n                left++;\n            }\n\n            maxLen = Math.max(maxLen, right - left);\n        }\n\n        return maxLen;\n    }\n}"
+                }
+            }
+        ],
+        "examples": [
+            {
+                "input": {
+                    "nums": [1, 1, 0, 1]
+                },
+                "output": 3
+            },
+            {
+                "input": {
+                    "nums": [0, 1, 1, 1, 0, 1]
+                },
+                "output": 4
+            },
+            {
+                "input": {
+                    "nums": [1, 1, 1]
+                },
+                "output": 2
+            }
+        ]
+    },
+    {
+        "id": 5,
+        "title": "Subarray Sum Equals K",
+        "difficulty": "Medium",
+        "acceptance_rate": 43.6,
+        "related_topics": [
+            "Array",
+            "Hash Table",
+            "Prefix Sum"
+        ],
+        "description": "Find the total number of continuous subarrays whose sum equals to k.",
+        "approaches": [
+            {
+                "approach": "Brute Force",
+                "time_complexity": "O(n^2)",
+                "solutions": {
+                    "python": "def func(nums, k):\n    count = 0\n    for start in range(len(nums)):\n        total = 0\n        for end in range(start, len(nums)):\n            total += nums[end]\n            if total == k:\n                count += 1\n    return count",
+                    "cpp": "int func(vector<int>& nums, int k) {\n    int count = 0;\n    for (int start = 0; start < nums.size(); ++start) {\n        int sum = 0;\n        for (int end = start; end < nums.size(); ++end) {\n            sum += nums[end];\n            if (sum == k) count++;\n        }\n    }\n    return count;\n}",
+                    "java": "class Solution {\n    public int func(int[] nums, int k) {\n        int count = 0;\n        for (int start = 0; start < nums.length; start++) {\n            int sum = 0;\n            for (int end = start; end < nums.length; end++) {\n                sum += nums[end];\n                if (sum == k) count++;\n            }\n        }\n        return count;\n    }\n}"
+                }
+            },
+            {
+                "approach": "Prefix Sum with Hash Map",
+                "time_complexity": "O(n)",
+                "solutions": {
+                    "python": "def func(nums, k):\n    count = 0\n    total = 0\n    prefix_sums = {0: 1}\n\n    for num in nums:\n        total += num\n        count += prefix_sums.get(total - k, 0)\n        prefix_sums[total] = prefix_sums.get(total, 0) + 1\n\n    return count",
+                    "cpp": "int func(vector<int>& nums, int k) {\n    unordered_map<int, int> prefix_sums = {{0, 1}};\n    int count = 0, total = 0;\n\n    for (int num : nums) {\n        total += num;\n        count += prefix_sums[total - k];\n        prefix_sums[total]++;\n    }\n\n    return count;\n}",
+                    "java": "import java.util.*;\nclass Solution {\n    public int func(int[] nums, int k) {\n        Map<Integer, Integer> prefixSums = new HashMap<>();\n        prefixSums.put(0, 1);\n        int count = 0, total = 0;\n\n        for (int num : nums) {\n            total += num;\n            count += prefixSums.getOrDefault(total - k, 0);\n            prefixSums.put(total, prefixSums.getOrDefault(total, 0) + 1);\n        }\n\n        return count;\n    }\n}"
+                }
+            }
+        ],
+        "examples": [
+            {
+                "input": {
+                    "nums": [1, 1, 1],
+                    "k": 2
+                },
+                "output": 2
+            },
+            {
+                "input": {
+                    "nums": [1, 2, 3],
+                    "k": 3
+                },
+                "output": 2
+            },
+            {
+                "input": {
+                    "nums": [-1, -1, 1],
+                    "k": 0
+                },
+                "output": 1
+            }
+        ]
+    },
+    {
+        "id": 6,
+        "title": "Longest Substring Without Repeating Characters",
+        "difficulty": "Medium",
+        "acceptance_rate": 33.1,
+        "related_topics": [
+            "Hash Table",
+            "String",
+            "Sliding Window"
+        ],
+        "description": "Find the length of the longest substring without repeating characters.",
+        "approaches": [
+            {
+                "approach": "Sliding Window",
+                "time_complexity": "O(n)",
+                "solutions": {
+                    "python": "def func(s):\n    char_set = set()\n    left = 0\n    max_length = 0\n\n    for right in range(len(s)):\n        while s[right] in char_set:\n            char_set.remove(s[left])\n            left += 1\n        char_set.add(s[right])\n        max_length = max(max_length, right - left + 1)\n\n    return max_length",
+                    "cpp": "int func(string s) {\n    unordered_set<char> char_set;\n    int left = 0, max_length = 0;\n\n    for (int right = 0; right < s.length(); ++right) {\n        while (char_set.count(s[right])) {\n            char_set.erase(s[left++]);\n        }\n        char_set.insert(s[right]);\n        max_length = max(max_length, right - left + 1);\n    }\n\n    return max_length;\n}",
+                    "java": "import java.util.*;\nclass Solution {\n    public int func(String s) {\n        Set<Character> charSet = new HashSet<>();\n        int left = 0, maxLength = 0;\n\n        for (int right = 0; right < s.length(); right++) {\n            while (charSet.contains(s.charAt(right))) {\n                charSet.remove(s.charAt(left++));\n            }\n            charSet.add(s.charAt(right));\n            maxLength = Math.max(maxLength, right - left + 1);\n        }\n\n        return maxLength;\n    }\n}"
+                }
+            }
+        ],
+        "examples": [
+            {
+                "input": {
+                    "s": "abcabcbb"
+                },
+                "output": 3
+            },
+            {
+                "input": {
+                    "s": "bbbbb"
+                },
+                "output": 1
+            },
+            {
+                "input": {
+                    "s": "pwwkew"
+                },
+                "output": 3
+            }
+        ]
+    },
+    {
+        "id": 8,
+        "title": "Product of Array Except Self",
+        "difficulty": "Medium",
+        "acceptance_rate": 60.9,
+        "related_topics": ["Array", "Prefix Sum"],
+        "description": "Implement the function below to calculate the product of an array except itself.",
+        "approaches": [
+            {
+                "approach": "Two Pass Product",
+                "time_complexity": "O(n)",
+                "solutions": {
+                    "python": "def func(nums):\n    n = len(nums)\n    answer = [1] * n\n    prefix = 1\n    for i in range(n):\n        answer[i] = prefix\n        prefix *= nums[i]\n    suffix = 1\n    for i in range(n - 1, -1, -1):\n        answer[i] *= suffix\n        suffix *= nums[i]\n    return answer",
+                    "cpp": "vector<int> func(vector<int>& nums) {\n    int n = nums.size();\n    vector<int> answer(n, 1);\n    int prefix = 1;\n    for (int i = 0; i < n; ++i) {\n        answer[i] = prefix;\n        prefix *= nums[i];\n    }\n    int suffix = 1;\n    for (int i = n - 1; i >= 0; --i) {\n        answer[i] *= suffix;\n        suffix *= nums[i];\n    }\n    return answer;\n}",
+                    "java": "class Solution {\n    public int[] func(int[] nums) {\n        int n = nums.length;\n        int[] answer = new int[n];\n        Arrays.fill(answer, 1);\n        int prefix = 1;\n        for (int i = 0; i < n; i++) {\n            answer[i] = prefix;\n            prefix *= nums[i];\n        }\n        int suffix = 1;\n        for (int i = n - 1; i >= 0; i--) {\n            answer[i] *= suffix;\n            suffix *= nums[i];\n        }\n        return answer;\n    }\n}"
+                }
+            }
+        ],
+        "examples": [
+            {
+                "input": {"nums": [1, 2, 3, 4]},
+                "output": [24, 12, 8, 6]
+            },
+            {
+                "input": {"nums": [-1, 1, 0, -3, 3]},
+                "output": [0, 0, 9, 0, 0]
+            }
+        ]
+    },
+    {
+        "id": 9,
+        "title": "Maximum Subarray",
+        "difficulty": "Easy",
+        "acceptance_rate": 48.6,
+        "related_topics": ["Array", "Divide and Conquer", "Dynamic Programming"],
+        "description": "Implement the function below to find the contiguous subarray with the largest sum.",
+        "approaches": [
+            {
+                "approach": "Kadane's Algorithm",
+                "time_complexity": "O(n)",
+                "solutions": {
+                    "python": "def func(nums):\n    max_sum = current_sum = nums[0]\n    for num in nums[1:]:\n        current_sum = max(num, current_sum + num)\n        max_sum = max(max_sum, current_sum)\n    return max_sum",
+                    "cpp": "int func(vector<int>& nums) {\n    int max_sum = nums[0], current_sum = nums[0];\n    for (int i = 1; i < nums.size(); ++i) {\n        current_sum = max(nums[i], current_sum + nums[i]);\n        max_sum = max(max_sum, current_sum);\n    }\n    return max_sum;\n}",
+                    "java": "class Solution {\n    public int func(int[] nums) {\n        int maxSum = nums[0], currentSum = nums[0];\n        for (int i = 1; i < nums.length; i++) {\n            currentSum = Math.max(nums[i], currentSum + nums[i]);\n            maxSum = Math.max(maxSum, currentSum);\n        }\n        return maxSum;\n    }\n}"
+                }
+            },
+            {
+                "approach": "Divide and Conquer",
+                "time_complexity": "O(nlogn)",
+                "solutions": {
+                    "python": "def func(nums):\n    def divide_and_conquer(left, right):\n        if left == right:\n            return nums[left]\n        mid = (left + right) // 2\n        left_max = divide_and_conquer(left, mid)\n        right_max = divide_and_conquer(mid + 1, right)\n        left_sum = right_sum = 0\n        current_sum = 0\n        for i in range(mid, left - 1, -1):\n            current_sum += nums[i]\n            left_sum = max(left_sum, current_sum)\n        current_sum = 0\n        for i in range(mid + 1, right + 1):\n            current_sum += nums[i]\n            right_sum = max(right_sum, current_sum)\n        return max(left_max, right_max, left_sum + right_sum)\n    return divide_and_conquer(0, len(nums) - 1)",
+                    "cpp": "int func(vector<int>& nums) {\n    function<int(int, int)> divideAndConquer = [&](int left, int right) -> int {\n        if (left == right) return nums[left];\n        int mid = (left + right) / 2;\n        int leftMax = divideAndConquer(left, mid);\n        int rightMax = divideAndConquer(mid + 1, right);\n        int leftSum = 0, rightSum = 0, currentSum = 0;\n        for (int i = mid; i >= left; i--) {\n            currentSum += nums[i];\n            leftSum = max(leftSum, currentSum);\n        }\n        currentSum = 0;\n        for (int i = mid + 1; i <= right; i++) {\n            currentSum += nums[i];\n            rightSum = max(rightSum, currentSum);\n        }\n        return max({leftMax, rightMax, leftSum + rightSum});\n    };\n    return divideAndConquer(0, nums.size() - 1);\n}",
+                    "java": "class Solution {\n    public int func(int[] nums) {\n        return divideAndConquer(nums, 0, nums.length - 1);\n    }\n\n    private int divideAndConquer(int[] nums, int left, int right) {\n        if (left == right) return nums[left];\n        int mid = (left + right) / 2;\n        int leftMax = divideAndConquer(nums, left, mid);\n        int rightMax = divideAndConquer(nums, mid + 1, right);\n        int leftSum = 0, rightSum = 0, currentSum = 0;\n        for (int i = mid; i >= left; i--) {\n            currentSum += nums[i];\n            leftSum = Math.max(leftSum, currentSum);\n        }\n        currentSum = 0;\n        for (int i = mid + 1; i <= right; i++) {\n            currentSum += nums[i];\n            rightSum = Math.max(rightSum, currentSum);\n        }\n        return Math.max(leftMax, rightMax, leftSum + rightSum);\n    }\n}"
+                }
+            }
+        ],
+        "examples": [
+            {
+                "input": {"nums": [-2, 1, -3, 4, -1, 2, 1, -5, 4]},
+                "output": 6
+            },
+            {
+                "input": {"nums": [1]},
+                "output": 1
+            },
+            {
+                "input": {"nums": [5, 4, -1, 7, 8]},
+                "output": 23
+            }
+        ]
+    }
+]
