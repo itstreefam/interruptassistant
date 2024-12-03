@@ -53,8 +53,8 @@ class InterruptionManager {
     }
 
     getRandomWaitTime() {
-        const minTimeout = minutesToMilliseconds(11);
-        const maxTimeout = minutesToMilliseconds(16);
+        const minTimeout = minutesToMilliseconds(1);
+        const maxTimeout = minutesToMilliseconds(2);
         return Math.floor(Math.random() * (maxTimeout - minTimeout + 1)) + minTimeout;
     }
 }
