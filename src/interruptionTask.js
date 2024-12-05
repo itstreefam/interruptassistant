@@ -17,6 +17,16 @@ class InterruptionTask {
         this.loadQuestions();
         this.shownQuestions = new Set();
         this.currentRange = 0;
+
+        // track edit events
+        this.editTracker = vscode.workspace.onDidChangeTextDocument((event) => {
+            this.trackEditEvents(event);
+        });
+
+        this.context.subscriptions.push(this.editTracker);
+        this.isInterruptionOngoing = false;
+
+        this.allEditEvents = [];
     }
 
     shuffleArray(array) {
@@ -29,14 +39,38 @@ class InterruptionTask {
     async loadQuestions() {
         try {
             const cwd = this.getCwd();
-            const datasetPath = path.join("C:\\Users\\thien\\Desktop\\GitHub\\interruptassistant\\ultimate_code_comprehension_set.json");
-            const data = fs.readFileSync(datasetPath, 'utf-8');
-            
+            console.log("Current working directory:", cwd);
+
+            const datasetPath = path.join("");
+
+            // const extensionPath = this.context.extensionPath;
+
+            // const datasetPath =  await path.join(extensionPath, 'ultimate_code_comprehension_set.json').replace(/\\/g, '/');
+
+            let data = fs.readFileSync(datasetPath, 'utf-8');
+
             // Split the data into lines and parse each line
             const lines = data.split('\n').filter(line => line.trim() !== '');
             this.questions = lines.map(line => JSON.parse(line));
+
+            let filteredQuestions = [];
+
+            // filter the questions that have at most 25 lines of code
+            for (let item of this.questions) {
+                // split item.question by \n
+                // if the length of the split is less than 25, keep the question
+                // else, remove the question
+                let question = item.question;
+                let lines = question.split('\n');
+                if (lines.length <= 25) {
+                    filteredQuestions.push(item);
+                }
+            }
+
+            this.questions = filteredQuestions;
             
-            console.log("Questions loaded successfully. Total questions:", this.questions.length);
+            // console.log("Questions loaded successfully. Total questions:", filteredQuestions.length);
+            // console.log("Questions loaded successfully. Total questions:", this.questions.length);
         } catch (error) {
             console.error("Error loading questions:", error.message);
             vscode.window.showErrorMessage(`Failed to load questions: ${error.message}`);
@@ -64,8 +98,27 @@ class InterruptionTask {
         }
     }
 
+    trackEditEvents(event) {
+        let document = event.document.fileName;
+
+        // grab the end file name
+        let split = document.split('\\');
+        document = split[split.length - 1];
+
+        let currentTime = Math.floor(Date.now() / 1000);
+
+        let editEvent = {
+            timestamp: currentTime,
+            fileName: document,
+            changes: event.contentChanges.map(change => change.text)
+        };
+
+        this.allEditEvents.push(editEvent);
+    }
+
     async startInterruption(onComplete) {
         this.stateSaved = false;
+        this.isInterruptionOngoing = true;
         console.log("Starting interruption: saving files and closing editors (excluding Webview panels).");
     
         try {
@@ -177,7 +230,7 @@ class InterruptionTask {
         this.timer = setTimeout(() => {
             console.log("Interruption time limit reached.");
             this.finishInterruption(panel, onComplete);
-        }, 1 * 60 * 1000);
+        }, 5 * 60 * 1000);
     }
 
     logResponse(question, userAnswer, isCorrect) {
@@ -313,6 +366,8 @@ class InterruptionTask {
         }
     
         this.stateSaved = true; // Mark state as saved to prevent duplicates
+
+        this.isInterruptionOngoing = false;
     
         // Save the end time of the interruption
         this.endTime = Math.floor(Date.now() / 1000);
@@ -325,7 +380,7 @@ class InterruptionTask {
             totalQuestionsAnswered: this.questionsAndAnswers.length,
             correctAnswers: this.correctAnswers,
             responses: this.questionsAndAnswers,
-            editEvents: this.editEvents
+            editEvents: this.allEditEvents
         };
     
         const interruptionDataString = JSON.stringify(interruptionData);
@@ -353,6 +408,9 @@ class InterruptionTask {
             // Reset the state
             this.resetState();
         });
+
+        // close all editors (in case there were remaining open editors)
+        vscode.commands.executeCommand('workbench.action.closeAllEditors');
     }    
 
     resetState() {
@@ -364,6 +422,7 @@ class InterruptionTask {
         // Preserve questionsAndAnswers and editEvents for logging
         this.questionsAndAnswers = [];
         this.editEvents = { lastEditBefore: null, firstEditAfter: null };
+        this.allEditEvents = [];
     }
 
     getCwd() {

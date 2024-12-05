@@ -92,6 +92,11 @@ if __name__ == '__main__':
     print("All data length:", len(all_data))
     print("Filtered data length:", len(filtered_data))
 
+    # Filter out where questions have fewer than 20 lines of code
+    filtered_snippet_data = [item for item in filtered_data if item["question"].count('\n') <= 20]
+
+    print("Filtered snippet data length:", len(filtered_snippet_data))
+
     # Pretty print the first item in the filtered data
     # pretty_print(json.dumps(filtered_data[0]))
 
