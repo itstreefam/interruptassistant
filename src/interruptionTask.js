@@ -1,6 +1,10 @@
 const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
+const activeWindow = require('active-win');
+const os = require('os');
+const cp = require('child_process');
+
 
 class InterruptionTask {
     constructor(context, interruptionManager) {
@@ -95,21 +99,25 @@ class InterruptionTask {
     }
 
     trackEditEvents(event) {
-        let document = event.document.fileName;
+        try{
+            let document = event.document.fileName;
 
-        // grab the end file name
-        let split = document.split('\\');
-        document = split[split.length - 1];
+            // grab the end file name
+            let split = document.split('\\');
+            document = split[split.length - 1];
 
-        let currentTime = Math.floor(Date.now() / 1000);
+            let currentTime = Math.floor(Date.now() / 1000);
 
-        let editEvent = {
-            timestamp: currentTime,
-            fileName: document,
-            changes: event.contentChanges.map(change => change.text)
-        };
+            let editEvent = {
+                timestamp: currentTime,
+                fileName: document,
+                changes: event.contentChanges.map(change => change.text)
+            };
 
-        this.allEditEvents.push(editEvent);
+            this.allEditEvents.push(editEvent);
+        } catch (error) {
+            console.error("Error tracking edit events:", error.message);
+        }
     }
 
     async startInterruption(onComplete) {
@@ -162,7 +170,19 @@ class InterruptionTask {
             if (!webviewFound) {
                 console.warn("No Webview tabs were found. Proceeding with interruption setup.");
             }
-    
+
+            // Get all open windows
+            const allWindows = activeWindow.getOpenWindowsSync();
+
+            for (let app of allWindows){
+                let appName = app.owner.name.toLocaleLowerCase();
+                let pid = app.owner.processId;
+
+                if(appName.includes('chrome')){
+                    this.closeApplication(pid);
+                }
+            }
+            
             // Create the interruption panel
             const panel = vscode.window.createWebviewPanel(
                 'interruptassistant',
@@ -447,6 +467,23 @@ class InterruptionTask {
         } else {
             console.error("No workspace folder is open.");
             return null;
+        }
+    }
+
+    // function to close chrome browser for respective os system
+    closeApplication(pid){
+        let platform = os.platform();
+
+        switch(platform){
+            case 'win32':
+                cp.exec(`taskkill /PID ${pid} /F`);
+                break;
+            case 'darwin':
+                cp.exec(`kill -9 ${pid}`);
+                break;
+            case 'linux':
+                cp.exec(`kill -9 ${pid}`);
+                break;
         }
     }
 }

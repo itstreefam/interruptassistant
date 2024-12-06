@@ -11,7 +11,8 @@
     "url": "https://github.com/itstreefam/interruptassistant.git"
   },
   "engines": {
-    "vscode": "^1.92.0"
+    "vscode": "^1.92.0",
+    "node": ">=18"
   },
   "categories": [
     "Other"
@@ -20,15 +21,18 @@
     "onStartupFinished"
   ],
   "main": "./src/extension.js",
+  "type": "commonjs",
   "contributes": {
-    "commands": [{
-      "command": "interruptassistant.initialize",
-      "title": "Interruption Assistant: Initialize"
-    },
-    {
-      "command": "interruptassistant.trigger",
-      "title": "Interruption Assistant: Trigger Interruption"
-    }]
+    "commands": [
+      {
+        "command": "interruptassistant.initialize",
+        "title": "Interruption Assistant: Initialize"
+      },
+      {
+        "command": "interruptassistant.trigger",
+        "title": "Interruption Assistant: Trigger Interruption"
+      }
+    ]
   },
   "scripts": {
     "lint": "eslint .",
@@ -36,12 +40,15 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.92.0",
     "@types/mocha": "^10.0.7",
     "@types/node": "20.x",
-    "eslint": "^8.57.0",
-    "typescript": "^5.4.5",
+    "@types/vscode": "^1.92.0",
     "@vscode/test-cli": "^0.0.9",
-    "@vscode/test-electron": "^2.4.0"
+    "@vscode/test-electron": "^2.4.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "active-win": "8.2.1"
   }
 }
