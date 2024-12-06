@@ -41,11 +41,7 @@ class InterruptionTask {
             const cwd = this.getCwd();
             console.log("Current working directory:", cwd);
 
-            const datasetPath = path.join("");
-
-            // const extensionPath = this.context.extensionPath;
-
-            // const datasetPath =  await path.join(extensionPath, 'ultimate_code_comprehension_set.json').replace(/\\/g, '/');
+            const datasetPath = path.resolve(this.context.extensionPath, 'ultimate_code_comprehension_set.json');
 
             let data = fs.readFileSync(datasetPath, 'utf-8');
 
@@ -409,8 +405,25 @@ class InterruptionTask {
             this.resetState();
         });
 
-        // close all editors (in case there were remaining open editors)
-        vscode.commands.executeCommand('workbench.action.closeAllEditors');
+        // close vscode editors (but not the tab that has Webview)
+        vscode.window.tabGroups.all.forEach(group => {
+            group.tabs
+            .filter(tab => !tab.label.includes('Webview'))
+            .forEach(tab => {
+                try {
+                    // Use safer closing method
+                    vscode.window.tabGroups.close(tab);
+                    console.log(`Closed editor: ${tab.label}`);
+                } catch (closeErr) {
+                    // More detailed error handling
+                    if (closeErr.message.includes('Invalid tab')) {
+                        console.warn(`Tab already closed or invalid: ${tab.label}`);
+                    } else {
+                        console.error(`Unexpected error closing tab ${tab.label}:`, closeErr);
+                    }
+                }
+            });
+        });
     }    
 
     resetState() {
