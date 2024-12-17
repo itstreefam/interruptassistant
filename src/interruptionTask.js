@@ -45,7 +45,7 @@ class InterruptionTask {
             const cwd = this.getCwd();
             console.log("Current working directory:", cwd);
 
-            const datasetPath = path.resolve(this.context.extensionPath, 'ultimate_code_comprehension_set.json');
+            const datasetPath = path.resolve(this.context.extensionPath, 'pseudo_code_comprehension_set.json');
 
             let data = fs.readFileSync(datasetPath, 'utf-8');
 
