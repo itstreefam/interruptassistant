@@ -57,10 +57,10 @@ class InterruptionManager {
     }
 
     getRandomWaitTime() {
-        // Minimum 12 minutes, then random between 13-37 minutes
+        // Minimum 12 minutes, then random between 13-31 minutes
         const minMinutes = 12;
-        const randomAdditionalMinutes = Math.floor(Math.random() * 25) + 1; // 1 to 25 minutes
-        const totalMinutes = minMinutes + randomAdditionalMinutes; // 13 to 37 minutes total
+        const randomAdditionalMinutes = Math.floor(Math.random() * 19) + 1; // 1 to 19 minutes
+        const totalMinutes = minMinutes + randomAdditionalMinutes; // 13 to 31 minutes total
         return minutesToMilliseconds(totalMinutes);
     }
 }

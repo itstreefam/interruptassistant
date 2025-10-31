@@ -2,7 +2,7 @@
   "name": "interruptassistant",
   "displayName": "interruptAssistant",
   "description": "(Semi)auto interrupting users for lab studies involving emulation of interruptions",
-  "version": "0.0.2",
+  "version": "0.1.1",
   "publisher": "trip",
   "private": true,
   "license": "MIT",
@@ -49,6 +49,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "active-win": "8.2.1"
+    "active-win": "8.2.1",
+    "vsce": "^2.15.0"
   }
 }
