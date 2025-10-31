@@ -10,114 +10,12 @@ class InterruptionTask {
     constructor(context, interruptionManager) {
         this.context = context;
         this.interruptionManager = interruptionManager;
-        this.correctAnswers = 0;
 
         this.timer = null;
-
         this.startTime = null;
-        this.questionsAndAnswers = []; // store questions and answers
-        this.editEvents = {lastEditBefore: null, firstEditAfter: null};
         this.stateSaved = false;
-        this.loadQuestions();
-        this.shownQuestions = new Set();
-        this.currentRange = 0;
 
-        // track edit events
-        this.editTracker = vscode.workspace.onDidChangeTextDocument((event) => {
-            this.trackEditEvents(event);
-        });
-
-        this.context.subscriptions.push(this.editTracker);
         this.isInterruptionOngoing = false;
-
-        this.allEditEvents = [];
-    }
-
-    shuffleArray(array) {
-        for (let i = array.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [array[i], array[j]] = [array[j], array[i]];
-        }
-    }
-
-    async loadQuestions() {
-        try {
-            const cwd = this.getCwd();
-            console.log("Current working directory:", cwd);
-
-            const datasetPath = path.resolve(this.context.extensionPath, 'pseudo_code_comprehension_set.json');
-
-            let data = fs.readFileSync(datasetPath, 'utf-8');
-
-            // Split the data into lines and parse each line
-            const lines = data.split('\n').filter(line => line.trim() !== '');
-            this.questions = lines.map(line => JSON.parse(line));
-
-            let filteredQuestions = [];
-
-            // filter the questions that have at most 25 lines of code
-            for (let item of this.questions) {
-                // split item.question by \n
-                // if the length of the split is less than 25, keep the question
-                // else, remove the question
-                let question = item.question;
-                let lines = question.split('\n');
-                if (lines.length <= 25) {
-                    filteredQuestions.push(item);
-                }
-            }
-
-            this.questions = filteredQuestions;
-            
-            // console.log("Questions loaded successfully. Total questions:", filteredQuestions.length);
-            // console.log("Questions loaded successfully. Total questions:", this.questions.length);
-        } catch (error) {
-            console.error("Error loading questions:", error.message);
-            vscode.window.showErrorMessage(`Failed to load questions: ${error.message}`);
-        }
-    }
-
-    getRandomQuestion(rangeStart, rangeEnd) {
-        let question;
-        do {
-            const randomIndex = Math.floor(Math.random() * (rangeEnd - rangeStart + 1)) + rangeStart;
-            question = this.questions[randomIndex];
-        } while (this.shownQuestions.has(question));
-        this.shownQuestions.add(question);
-        return question;
-    }
-
-    alternateQuestion() {
-        let midPoint = Math.floor(this.questions.length / 2);
-        if (this.currentRange === 0) {
-            this.currentRange = 1;
-            return this.getRandomQuestion(midPoint, this.questions.length - 1);
-        } else {
-            this.currentRange = 0;
-            return this.getRandomQuestion(0, midPoint - 1);
-        }
-    }
-
-    trackEditEvents(event) {
-        try{
-            let document = event.document.fileName;
-
-            // grab the end file name
-            let split = document.split('\\');
-            document = split[split.length - 1];
-
-            let currentTime = Math.floor(Date.now() / 1000);
-
-            let editEvent = {
-                timestamp: currentTime,
-                fileName: document,
-                changes: event.contentChanges.map(change => change.text)
-            };
-
-            this.allEditEvents.push(editEvent);
-        } catch (error) {
-            console.error("Error tracking edit events:", error.message);
-        }
     }
 
     async startInterruption(onComplete) {
@@ -144,8 +42,8 @@ class InterruptionTask {
                 const tabsToClose = [...group.tabs];
     
                 for (const tab of tabsToClose) {
-                    // Skip Webview tabs
-                    if (tab.label.includes('Webview')) {
+                    // Skip Webview tabs (case-insensitive check)
+                    if (tab.label.toLowerCase().includes('webview')) {
                         console.log(`Skipping Webview tab: ${tab.label}`);
                         webviewFound = true;
                         continue;
@@ -171,11 +69,11 @@ class InterruptionTask {
                 console.warn("No Webview tabs were found. Proceeding with interruption setup.");
             }
 
-            // Get all open windows
+            // Close Chrome browser
             const allWindows = activeWindow.getOpenWindowsSync();
 
             for (let app of allWindows){
-                let appName = app.owner.name.toLocaleLowerCase();
+                let appName = app.owner.name.toLowerCase();
                 let pid = app.owner.processId;
 
                 if(appName.includes('chrome')){
@@ -186,11 +84,11 @@ class InterruptionTask {
             // Create the interruption panel
             const panel = vscode.window.createWebviewPanel(
                 'interruptassistant',
-                'Interrupting Task',
+                'Time for Interruption',
                 vscode.ViewColumn.One,
                 { 
                     enableScripts: true,
-                    retainContextWhenHidden: true // Keep the panel's content when hidden
+                    retainContextWhenHidden: true
                 }
             );
     
@@ -199,177 +97,66 @@ class InterruptionTask {
     
             await this.setupInterruptionPanel(panel, onComplete);
             
-            console.log("Displaying first question...");
-            this.showNextQuestion(panel);
-
-        } catch (err) {
-            console.error("Error during interruption setup:", err);
-            throw err;
+            console.log("Displaying interruption message...");
+        } catch (error) {
+            console.error("Error starting interruption:", error);
+            vscode.window.showErrorMessage(`Failed to start interruption: ${error.message}`);
+            this.isInterruptionOngoing = false;
         }
-    } 
-
-    setupInterruptionPanel(panel, onComplete) {
-        this.startTimer(panel, onComplete);
+    }
     
-        panel.webview.onDidReceiveMessage(message => {
-            if (message.answer) {
-                const userAnswer = message.answer.trim();
-                const question = this.lastQuestion; // Reference the last displayed question
+    async setupInterruptionPanel(panel, onComplete) {
+        // Set the content to simple text message
+        panel.webview.html = this.getInterruptionHtml();
     
-                // Check if the answer is correct
-                const isCorrect = userAnswer === question.correct_answer;
-                this.correctAnswers += isCorrect ? 1 : 0;
+        // Set timer for 10 minutes (600 seconds)
+        const interruptionDuration = 10 * 60 * 1000; // 10 minutes in milliseconds
     
-                console.log(`User answered: ${userAnswer}, Correct: ${isCorrect}`);
-    
-                // Log the response
-                this.logResponse(question, userAnswer, isCorrect);
-            }
-    
-            if (message.action === 'nextQuestion') {
-                console.log("Proceeding to the next question...");
-                this.showNextQuestion(panel);
-            }
-        });
-    
-        panel.onDidDispose(() => {
-            if (!this.stateSaved) {
-                console.log("Interruption panel closed prematurely.");
-                this.resetState();
-                this.interruptionManager.isInterruptionActive = false;
-                this.interruptionManager.scheduleNextInterruption();
-            }
-        });
-    }     
-
-    startTimer(panel, onComplete) {
         this.timer = setTimeout(() => {
-            console.log("Interruption time limit reached.");
+            console.log("Interruption time complete (10 minutes).");
             this.finishInterruption(panel, onComplete);
-        }, 5 * 60 * 1000);
-    }
-
-    logResponse(question, userAnswer, isCorrect) {
-        this.questionsAndAnswers.push({
-            question: question.question,
-            userAnswer: userAnswer,
-            correctAnswer: question.correct_answer,
-            isCorrect: isCorrect,
-            timestamp: new Date().toISOString()
+        }, interruptionDuration);
+    
+        // Handle panel disposal (if user closes it manually)
+        panel.onDidDispose(() => {
+            if (this.timer) {
+                clearTimeout(this.timer);
+                this.timer = null;
+            }
+            if (!this.stateSaved) {
+                console.log("Panel disposed before completion. Saving state.");
+                this.finishInterruption(panel, onComplete);
+            }
         });
-        console.log(`Logged response for question: ${question.question}`);
     }
     
-
-    showNextQuestion(panel) {
-        const question = this.alternateQuestion(); // Fetch the next question based on alternating ranges
-        this.lastQuestion = question; // Keep track of the current question for logging and validation
-        console.log(`Displaying question: ${question.question}`);
-        panel.webview.html = this.getWebviewContent(question); // Update the webview content
-    }
-    
-    
-    getWebviewContent(question) {
+    getInterruptionHtml() {
         return `
-            <html>
+            <!DOCTYPE html>
+            <html lang="en">
                 <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Time for Interruption</title>
                     <style>
                         body {
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            height: 100vh;
+                            margin: 0;
                             font-family: Arial, sans-serif;
-                            margin: 20px;
                             background-color: #1e1e1e;
-                            color: #d4d4d4;
+                            color: #ffffff;
                         }
-                        pre {
-                            background-color: #252526;
-                            padding: 10px;
-                            border-radius: 5px;
-                            font-size: 1em;
-                            overflow-x: auto;
-                            white-space: pre-wrap;
-                        }
-                        .answer-btn {
-                            background-color: #007acc;
-                            color: white;
-                            border: none;
-                            border-radius: 5px;
-                            padding: 10px 15px;
-                            font-size: 1em;
-                            cursor: pointer;
-                            margin-bottom: 10px;
-                            display: block;
-                            width: 100%;
-                            text-align: left;
-                        }
-                        .answer-btn:hover {
-                            background-color: #005a9e;
-                        }
-                        .answer-btn.selected {
-                            background-color: #005a9e;
-                            border: 2px solid #ffffff;
-                        }
-                        .submit-btn {
-                            margin-top: 20px;
-                            padding: 10px 20px;
-                            background-color: gray;
-                            color: white;
-                            border: none;
-                            border-radius: 5px;
-                            cursor: not-allowed;
-                            font-size: 1em;
-                        }
-                        .submit-btn.active {
-                            background-color: #007acc;
-                            cursor: pointer;
+                        h1 {
+                            font-size: 3em;
+                            text-align: center;
                         }
                     </style>
                 </head>
                 <body>
-                    <h1>Question</h1>
-                    <pre>${question.question.replace(/\n/g, '<br>')}</pre>
-                    <h2>Choose an Answer</h2>
-                    <div id="answer-container">
-                        ${question.choices.map((choice, index) => `
-                            <button class="answer-btn" id="choice-${index}" onclick="selectAnswer('${choice.replace(/'/g, "\\'")}', 'choice-${index}')">${choice}</button>
-                        `).join('')}
-                    </div>
-                    <button id="submit-btn" class="submit-btn" onclick="submitAnswer()" disabled>Submit</button>
-                    <script>
-                        const vscode = acquireVsCodeApi();
-                        let selectedAnswer = null;
-    
-                        function selectAnswer(answer, buttonId) {
-                            selectedAnswer = answer;
-    
-                            // Highlight the selected button and reset others
-                            document.querySelectorAll('.answer-btn').forEach(btn => {
-                                btn.classList.remove('selected');
-                            });
-                            document.getElementById(buttonId).classList.add('selected');
-    
-                            // Enable the submit button
-                            const submitBtn = document.getElementById('submit-btn');
-                            submitBtn.disabled = false;
-                            submitBtn.classList.add('active');
-                        }
-    
-                        function submitAnswer() {
-                            if (selectedAnswer) {
-                                vscode.postMessage({ answer: selectedAnswer });
-                                
-                                // Disable interactions after submission
-                                document.querySelectorAll('.answer-btn').forEach(btn => btn.disabled = true);
-                                const submitBtn = document.getElementById('submit-btn');
-                                submitBtn.disabled = true;
-                                submitBtn.innerText = "Submitted";
-    
-                                // Notify backend to move to the next question
-                                setTimeout(() => {
-                                    vscode.postMessage({ action: 'nextQuestion' });
-                                }, 500);
-                            }
-                        }
-                    </script>
+                    <h1>Time for Interruption</h1>
                 </body>
             </html>
         `;
@@ -388,15 +175,11 @@ class InterruptionTask {
         // Save the end time of the interruption
         this.endTime = Math.floor(Date.now() / 1000);
     
-        vscode.window.showInformationMessage(`Interruption complete. You answered ${this.correctAnswers} questions correctly.`);
+        vscode.window.showInformationMessage(`Interruption complete.`);
     
         const interruptionData = {
             startTime: this.startTime,
-            endTime: this.endTime,
-            totalQuestionsAnswered: this.questionsAndAnswers.length,
-            correctAnswers: this.correctAnswers,
-            responses: this.questionsAndAnswers,
-            editEvents: this.allEditEvents
+            endTime: this.endTime
         };
     
         const interruptionDataString = JSON.stringify(interruptionData);
@@ -428,7 +211,7 @@ class InterruptionTask {
         // close vscode editors (but not the tab that has Webview)
         vscode.window.tabGroups.all.forEach(group => {
             group.tabs
-            .filter(tab => !tab.label.includes('Webview'))
+            .filter(tab => !tab.label.toLowerCase().includes('webview'))
             .forEach(tab => {
                 try {
                     // Use safer closing method
@@ -447,15 +230,8 @@ class InterruptionTask {
     }    
 
     resetState() {
-        this.currentProblemIndex = 0;
-        this.correctAnswers = 0;
         clearTimeout(this.timer);
         this.timer = null;
-
-        // Preserve questionsAndAnswers and editEvents for logging
-        this.questionsAndAnswers = [];
-        this.editEvents = { lastEditBefore: null, firstEditAfter: null };
-        this.allEditEvents = [];
     }
 
     getCwd() {
